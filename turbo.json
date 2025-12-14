@@ -1,0 +1,116 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["**/.env.*local"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:next": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:spotlight": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "outputs": []
+    },
+    "lint:fix": {
+      "dependsOn": ["^lint:fix"],
+      "outputs": []
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["tests/e2e/**/*.ts", "playwright.config.ts"]
+    },
+    "test:unit": {
+      "dependsOn": ["^test:unit"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "tests/unit/**/*.ts", "tests/unit/**/*.tsx"]
+    },
+    "test:integration": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["tests/integration/**/*.ts", "tests/integration/**/*.tsx"]
+    },
+    "test:visual": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["tests/visual/**/*.ts", "tests/visual/**/*.tsx"]
+    },
+    "test:performance": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["tests/performance/**/*.ts", "tests/performance/**/*.tsx"]
+    },
+    "test:contract": {
+      "dependsOn": ["build"],
+      "outputs": [],
+      "inputs": ["tests/contract/**/*.ts", "tests/contract/**/*.tsx"]
+    },
+    "test:lighthouse": {
+      "dependsOn": ["build"],
+      "outputs": [".lighthouseci/**"],
+      "inputs": ["lighthouserc.mjs"]
+    },
+    "test:lighthouse:collect": {
+      "dependsOn": ["build"],
+      "outputs": [".lighthouseci/**"],
+      "inputs": ["lighthouserc.mjs"]
+    },
+    "test:lighthouse:assert": {
+      "dependsOn": ["test:lighthouse:collect"],
+      "outputs": [],
+      "inputs": ["lighthouserc.mjs"]
+    },
+    "test:mutation": {
+      "dependsOn": ["test"],
+      "outputs": ["reports/mutation/**"],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "stryker.config.mjs"]
+    },
+    "test:mutation:report": {
+      "dependsOn": ["test"],
+      "outputs": ["reports/mutation/**"],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "stryker.config.mjs"]
+    },
+    "storybook": {
+      "cache": false,
+      "persistent": true
+    },
+    "storybook:build": {
+      "dependsOn": ["build"],
+      "outputs": ["storybook-static/**"]
+    },
+    "db:generate": {
+      "outputs": ["drizzle/**"]
+    },
+    "db:migrate": {
+      "outputs": []
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    }
+  },
+  "globalEnv": ["NODE_ENV", "NEXT_PUBLIC_", "SENTRY_", "CLERK_", "DATABASE_URL", "STRIPE_"]
+}

@@ -1,0 +1,111 @@
+name: Mutation Testing
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run mutation tests weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run mutation tests
+        run: npm run test:mutation:report
+        env:
+          NODE_ENV: test
+
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+
+      - name: Comment PR with mutation results
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'reports/mutation/mutation-report.json';
+            
+            try {
+              if (fs.existsSync(path)) {
+                const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+                
+                const mutationScore = report.metrics.mutationScore;
+                const killed = report.metrics.killed;
+                const survived = report.metrics.survived;
+                const total = report.metrics.totalMutants;
+                const timeout = report.metrics.timeout;
+                const noCoverage = report.metrics.noCoverage;
+                
+                const status = mutationScore >= 80 ? '✅' : mutationScore >= 60 ? '⚠️' : '❌';
+                
+                const comment = "## 🧬 Mutation Testing Report\n\n" +
+              "| Metric | Value | Status |\n" +
+              "|--------|-------|---------|\n" +
+              `| Mutation Score | ${mutationScore.toFixed(1)}% | ${status} |\n` +
+              `| Killed Mutants | ${killed} | ✅ |\n` +
+              `| Survived Mutants | ${survived} | ${survived > 0 ? '⚠️' : '✅'} |\n` +
+              `| Timeout | ${timeout} | ${timeout > 0 ? '⚠️' : '✅'} |\n` +
+              `| No Coverage | ${noCoverage} | ${noCoverage > 0 ? '⚠️' : '✅'} |\n` +
+              `| Total Mutants | ${total} | 📊 |\n\n` +
+              "### 📈 Quality Assessment\n" +
+              (mutationScore >= 80 ? "🎉 Excellent test coverage! Your tests are catching most mutations.\n" :
+               mutationScore >= 60 ? "👍 Good test coverage, but there's room for improvement.\n" :
+               "⚠️ Test coverage needs improvement. Consider adding more comprehensive tests.\n") +
+              (survived > 0 ? "\n### 🔍 Survived Mutants\nConsider reviewing the survived mutants and adding tests to catch them.\n" : "") +
+              `\n[View detailed HTML report](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`;
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              }
+            } catch (error) {
+              console.log('Could not read mutation report:', error.message);
+            }
+
+      - name: Check mutation score threshold
+        run: |
+          if [ -f "reports/mutation/mutation-report.json" ]; then
+            SCORE=$(node -e "
+              const report = JSON.parse(require('fs').readFileSync('reports/mutation/mutation-report.json', 'utf8'));
+              console.log(report.metrics.mutationScore);
+            ")
+            
+            echo "Mutation score: $SCORE%"
+            
+            if (( $(echo "$SCORE < 50" | bc -l) )); then
+              echo "❌ Mutation score below threshold (50%)"
+              exit 1
+            elif (( $(echo "$SCORE < 60" | bc -l) )); then
+              echo "⚠️ Mutation score below recommended threshold (60%)"
+            else
+              echo "✅ Mutation score acceptable"
+            fi
+          else
+            echo "❌ Mutation report not found"
+            exit 1
+          fi

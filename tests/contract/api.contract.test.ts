@@ -5,7 +5,6 @@ describe('API Contract Tests', () => {
   const provider = new PactV4({
     consumer: 'frontend',
     provider: 'api',
-    port: 1234,
     dir: path.resolve(process.cwd(), 'pacts'),
     logLevel: 'info',
   });
@@ -19,38 +18,32 @@ describe('API Contract Tests', () => {
         createdAt: Matchers.like('2023-01-01T00:00:00.000Z'),
       };
 
-      provider.addInteraction({
-        state: 'user exists',
-        uponReceiving: 'a request for user profile',
-        withRequest: {
-          method: 'GET',
-          path: '/api/user/profile',
-          headers: {
-            Authorization: Matchers.like('Bearer token'),
-          },
-        },
-        willRespondWith: {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-          body: mockData,
-        },
-      });
+      await provider
+        .addInteraction()
+        .given('user exists')
+        .uponReceiving('a request for user profile')
+        .withRequest('GET', '/api/user/profile', (req) => {
+          req.headers({ Authorization: Matchers.like('Bearer token') });
+        })
+        .willRespondWith(200, (res) => {
+          res.headers({ 'Content-Type': 'application/json; charset=utf-8' });
+          res.jsonBody(mockData);
+        })
+        .executeTest(async (mockserver: any) => {
+          const response = await fetch(`${mockserver.url}/api/user/profile`, {
+            headers: {
+              Authorization: 'Bearer test-token',
+            },
+          });
 
-      const response = await fetch(`http://localhost:1234/api/user/profile`, {
-        headers: {
-          Authorization: 'Bearer test-token',
-        },
-      });
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      
-      expect(data).toHaveProperty('id');
-      expect(data).toHaveProperty('email');
-      expect(data).toHaveProperty('name');
-      expect(data).toHaveProperty('createdAt');
+          expect(response.status).toBe(200);
+          const data = await response.json();
+          
+          expect(data).toHaveProperty('id');
+          expect(data).toHaveProperty('email');
+          expect(data).toHaveProperty('name');
+          expect(data).toHaveProperty('createdAt');
+        });
     });
   });
 
@@ -64,39 +57,33 @@ describe('API Contract Tests', () => {
         createdAt: Matchers.like('2023-01-01T00:00:00.000Z'),
       };
 
-      provider.addInteraction({
-        state: 'organization exists',
-        uponReceiving: 'a request for organization details',
-        withRequest: {
-          method: 'GET',
-          path: '/api/organization',
-          headers: {
-            Authorization: Matchers.like('Bearer token'),
-          },
-        },
-        willRespondWith: {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-          },
-          body: mockData,
-        },
-      });
+      await provider
+        .addInteraction()
+        .given('organization exists')
+        .uponReceiving('a request for organization details')
+        .withRequest('GET', '/api/organization', (req) => {
+          req.headers({ Authorization: Matchers.like('Bearer token') });
+        })
+        .willRespondWith(200, (res) => {
+          res.headers({ 'Content-Type': 'application/json; charset=utf-8' });
+          res.jsonBody(mockData);
+        })
+        .executeTest(async (mockserver: any) => {
+          const response = await fetch(`${mockserver.url}/api/organization`, {
+            headers: {
+              Authorization: 'Bearer test-token',
+            },
+          });
 
-      const response = await fetch(`http://localhost:1234/api/organization`, {
-        headers: {
-          Authorization: 'Bearer test-token',
-        },
-      });
-
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      
-      expect(data).toHaveProperty('id');
-      expect(data).toHaveProperty('name');
-      expect(data).toHaveProperty('slug');
-      expect(data).toHaveProperty('plan');
-      expect(data).toHaveProperty('createdAt');
+          expect(response.status).toBe(200);
+          const data = await response.json();
+          
+          expect(data).toHaveProperty('id');
+          expect(data).toHaveProperty('name');
+          expect(data).toHaveProperty('slug');
+          expect(data).toHaveProperty('plan');
+          expect(data).toHaveProperty('createdAt');
+        });
     });
   });
 });

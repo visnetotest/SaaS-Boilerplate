@@ -1,0 +1,92 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+
+      - name: Run Lighthouse CI
+        run: npm run test:lighthouse
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          LHCI_TOKEN: ${{ secrets.LHCI_TOKEN }}
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 30
+
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = '.lighthouseci/lhr-*.json';
+            
+            try {
+              const files = fs.readdirSync('.lighthouseci');
+              const lhrFiles = files.filter(f => f.startsWith('lhr-') && f.endsWith('.json'));
+              
+              if (lhrFiles.length > 0) {
+                const latestReport = JSON.parse(fs.readFileSync(`.lighthouseci/${lhrFiles[lhrFiles.length - 1]}`, 'utf8'));
+                
+                const performance = Math.round(latestReport.categories.performance.score * 100);
+                const accessibility = Math.round(latestReport.categories.accessibility.score * 100);
+                const bestPractices = Math.round(latestReport.categories['best-practices'].score * 100);
+                const seo = Math.round(latestReport.categories.seo.score * 100);
+                
+                const comment = "## 🚦 Lighthouse Performance Report\n\n" +
+              "| Metric | Score | Status |\n" +
+              "|--------|-------|---------|\n" +
+              `| Performance | ${performance}% | ${performance >= 80 ? '✅' : '⚠️'} |\n` +
+              `| Accessibility | ${accessibility}% | ${accessibility >= 90 ? '✅' : '⚠️'} |\n` +
+              `| Best Practices | ${bestPractices}% | ${bestPractices >= 80 ? '✅' : '⚠️'} |\n` +
+              `| SEO | ${seo}% | ${seo >= 80 ? '✅' : '⚠️'} |\n\n` +
+              "### 📊 Performance Metrics\n" +
+              `- First Contentful Paint: ${latestReport.audits['first-contentful-paint'].displayValue}\n` +
+              `- Largest Contentful Paint: ${latestReport.audits['largest-contentful-paint'].displayValue}\n` +
+              `- Cumulative Layout Shift: ${latestReport.audits['cumulative-layout-shift'].displayValue}\n` +
+              `- Total Blocking Time: ${latestReport.audits['total-blocking-time'].displayValue}\n\n` +
+              `[View detailed report](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`;
+                
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              }
+            } catch (error) {
+              console.log('Could not read Lighthouse results:', error.message);
+            }

@@ -1,0 +1,96 @@
+
+> saas-boilerplate@1.7.7 build
+> next build
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Volumes/MacMini4-ssd/home/Users/kong/pnpm-lock.yaml as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Volumes/MacMini4-ssd/home/Users/kong/code_nextjs/SaaS-Boilerplate/package-lock.json
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Environments: .env.production, .env
+   - Experiments (use with caution):
+     · clientTraceMetadata
+
+   Creating an optimized production build ...
+(node:83633) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Volumes/MacMini4-ssd/home/Users/kong/code_nextjs/SaaS-Boilerplate/postcss.config.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Volumes/MacMini4-ssd/home/Users/kong/code_nextjs/SaaS-Boilerplate/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> Build error occurred
+Error: Turbopack build failed with 3 errors:
+./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts:1:1
+Export createSharedPathnamesNavigation doesn't exist in target module
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { createSharedPathnamesNavigation } [36mfrom[39m [32m'next-intl/navigation'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m
+ [90m 3 |[39m [36mimport[39m { [33mAllLocales[39m[33m,[39m [33mAppConfig[39m } [36mfrom[39m [32m'@/utils/AppConfig'[39m[33m;[39m
+ [90m 4 |[39m[0m
+
+The export createSharedPathnamesNavigation was not found in module [project]/code_nextjs/SaaS-Boilerplate/node_modules/next-intl/dist/esm/production/navigation.react-client.js [app-client] (ecmascript).
+Did you mean to import createNavigation?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts [Client Component Browser]
+    ./code_nextjs/SaaS-Boilerplate/src/components/LocaleSwitcher.tsx [Client Component Browser]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Client Component Browser]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Server Component]
+    ./code_nextjs/SaaS-Boilerplate/src/app/[locale]/(auth)/dashboard/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts [Client Component SSR]
+    ./code_nextjs/SaaS-Boilerplate/src/components/LocaleSwitcher.tsx [Client Component SSR]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Client Component SSR]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Server Component]
+    ./code_nextjs/SaaS-Boilerplate/src/app/[locale]/(auth)/dashboard/layout.tsx [Server Component]
+
+
+./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts:1:1
+Export createSharedPathnamesNavigation doesn't exist in target module
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { createSharedPathnamesNavigation } [36mfrom[39m [32m'next-intl/navigation'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m
+ [90m 3 |[39m [36mimport[39m { [33mAllLocales[39m[33m,[39m [33mAppConfig[39m } [36mfrom[39m [32m'@/utils/AppConfig'[39m[33m;[39m
+ [90m 4 |[39m[0m
+
+The export createSharedPathnamesNavigation was not found in module [project]/code_nextjs/SaaS-Boilerplate/node_modules/next-intl/dist/esm/production/navigation.react-client.js [app-ssr] (ecmascript).
+Did you mean to import createNavigation?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import traces:
+  Client Component Browser:
+    ./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts [Client Component Browser]
+    ./code_nextjs/SaaS-Boilerplate/src/components/LocaleSwitcher.tsx [Client Component Browser]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Client Component Browser]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Server Component]
+    ./code_nextjs/SaaS-Boilerplate/src/app/[locale]/(auth)/dashboard/layout.tsx [Server Component]
+
+  Client Component SSR:
+    ./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts [Client Component SSR]
+    ./code_nextjs/SaaS-Boilerplate/src/components/LocaleSwitcher.tsx [Client Component SSR]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Client Component SSR]
+    ./code_nextjs/SaaS-Boilerplate/src/features/dashboard/DashboardHeader.tsx [Server Component]
+    ./code_nextjs/SaaS-Boilerplate/src/app/[locale]/(auth)/dashboard/layout.tsx [Server Component]
+
+
+./code_nextjs/SaaS-Boilerplate/src/app/[locale]/(unauth)/page.tsx:1:1
+Export unstable_setRequestLocale doesn't exist in target module
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { getTranslations[33m,[39m unstable_setRequestLocale } [36mfrom[39m [32m'next-intl/server'[39m[33m;[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m
+ [90m 3 |[39m [36mimport[39m { [33mCTA[39m } [36mfrom[39m [32m'@/templates/CTA'[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mDemoBanner[39m } [36mfrom[39m [32m'@/templates/DemoBanner'[39m[33m;[39m[0m
+
+The export unstable_setRequestLocale was not found in module [project]/code_nextjs/SaaS-Boilerplate/node_modules/next-intl/dist/esm/production/server.react-server.js [app-rsc] (ecmascript).
+Did you mean to import setRequestLocale?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+
+    at <unknown> (./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts:1:1)
+    at <unknown> (./code_nextjs/SaaS-Boilerplate/src/libs/i18nNavigation.ts:1:1)
+    at <unknown> (./code_nextjs/SaaS-Boilerplate/src/app/[locale]/(unauth)/page.tsx:1:1)
