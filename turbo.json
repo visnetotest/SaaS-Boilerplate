@@ -19,19 +19,19 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^lint"],
+      "dependsOn": [],
       "outputs": []
     },
     "lint:fix": {
-      "dependsOn": ["^lint:fix"],
+      "dependsOn": [],
       "outputs": []
     },
     "check-types": {
-      "dependsOn": ["^check-types"],
+      "dependsOn": [],
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^test"],
+      "dependsOn": [],
       "outputs": ["coverage/**"],
       "inputs": ["src/**/*.tsx", "src/**/*.ts", "test/**/*.ts", "test/**/*.tsx"]
     },
@@ -40,11 +40,7 @@
       "outputs": [],
       "inputs": ["tests/e2e/**/*.ts", "playwright.config.ts"]
     },
-    "test:unit": {
-      "dependsOn": ["^test:unit"],
-      "outputs": ["coverage/**"],
-      "inputs": ["src/**/*.tsx", "src/**/*.ts", "tests/unit/**/*.ts", "tests/unit/**/*.tsx"]
-    },
+    
     "test:integration": {
       "dependsOn": ["build"],
       "outputs": [],

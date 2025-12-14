@@ -131,8 +131,9 @@ describe('CircuitBreakerRegistry', () => {
   let registry: CircuitBreakerRegistry;
 
   beforeEach(() => {
+    // Reset the singleton instance for clean testing
+    (CircuitBreakerRegistry as any).instance = undefined;
     registry = CircuitBreakerRegistry.getInstance();
-    registry.resetAll();
   });
 
   it('should create new circuit breaker', () => {
