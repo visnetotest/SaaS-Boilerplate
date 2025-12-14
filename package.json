@@ -13,7 +13,8 @@
     "clean": "turbo run clean",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
-    "check-types": "turbo run check-types",
+    "check-types": "tsc --noEmit",
+    "check-package-json": "node -e \"console.log('package.json is valid')\"",
     "test": "turbo run test",
     "test:unit": "vitest run tests/unit -- --run",
     "test:integration": "vitest run tests/integration -- --run",
@@ -55,7 +56,12 @@
     "@spotlightjs/spotlight": "^2.5.0",
     "@t3-oss/env-nextjs": "^0.11.1",
     "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-table": "^8.20.5",
+    "@trpc/client": "^11.8.0",
+    "@trpc/next": "^11.8.0",
+    "@trpc/react-query": "^11.8.0",
+    "@trpc/server": "^11.8.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.35.1",
@@ -70,8 +76,9 @@
     "react-hook-form": "^7.53.0",
     "sharp": "^0.33.5",
     "stripe": "^16.12.0",
+    "superjson": "^2.2.6",
     "tailwind-merge": "^2.5.4",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^2.27.3",

@@ -1,0 +1,4 @@
+
+> saas-boilerplate@1.7.7 check-types
+> tsc --noEmit
+

@@ -1,11 +1,11 @@
-import '@/styles/global.css';
+import '@/styles/global.css'
 
-import type { Metadata } from 'next';
-import { NextIntlClientProvider } from 'next-intl';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import type { Metadata } from 'next'
+import { NextIntlClientProvider } from 'next-intl'
+import { getMessages } from 'next-intl/server'
 
-import { DemoBadge } from '@/components/DemoBadge';
-import { AllLocales } from '@/utils/AppConfig';
+import { DemoBadge } from '@/components/DemoBadge'
+import { AllLocales } from '@/utils/AppConfig'
 
 export const metadata: Metadata = {
   icons: [
@@ -30,21 +30,20 @@ export const metadata: Metadata = {
       url: '/favicon.ico',
     },
   ],
-};
+}
 
 export function generateStaticParams() {
-  return AllLocales.map(locale => ({ locale }));
+  return AllLocales.map((locale) => ({ locale }))
 }
 
 export default async function RootLayout(props: {
-  children: React.ReactNode;
-  params: Promise<{ locale: string }>;
+  children: React.ReactNode
+  params: Promise<{ locale: string }>
 }) {
-  const { locale } = await props.params;
-  setRequestLocale(locale);
+  const { locale } = await props.params
 
   // Get messages on server side
-  const messages = await getTranslations();
+  const messages = await getMessages()
 
   // The `suppressHydrationWarning` in <html> is used to prevent hydration errors caused by `next-themes`.
   // Solution provided by the package itself: https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
@@ -53,17 +52,14 @@ export default async function RootLayout(props: {
   // which dynamically adds a `style` attribute to the body tag.
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
+      <body className='bg-background text-foreground antialiased' suppressHydrationWarning>
         {/* PRO: Dark mode support for Shadcn UI */}
-        <NextIntlClientProvider
-          locale={locale}
-          messages={messages as any}
-        >
+        <NextIntlClientProvider locale={locale} messages={messages as any}>
           {props.children}
 
           <DemoBadge />
         </NextIntlClientProvider>
       </body>
     </html>
-  );
+  )
 }

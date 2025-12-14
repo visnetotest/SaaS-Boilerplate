@@ -1,19 +1,19 @@
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath } from 'node:url'
 
-import withBundleAnalyzer from '@next/bundle-analyzer';
-import { withSentryConfig } from '@sentry/nextjs';
-import createJiti from 'jiti';
-import createNextIntlPlugin from 'next-intl/plugin';
+import withBundleAnalyzer from '@next/bundle-analyzer'
+import { withSentryConfig } from '@sentry/nextjs'
+import createJiti from 'jiti'
+import createNextIntlPlugin from 'next-intl/plugin'
 
-const jiti = createJiti(fileURLToPath(import.meta.url));
+const jiti = createJiti(fileURLToPath(import.meta.url))
 
-jiti('./src/libs/Env');
+jiti('./src/libs/Env')
 
-const withNextIntlConfig = createNextIntlPlugin('./src/libs/i18n.ts');
+const withNextIntlConfig = createNextIntlPlugin('./src/libs/i18n.ts')
 
 const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
-});
+})
 
 /** @type {import('next').NextConfig} */
 export default withSentryConfig(
@@ -22,7 +22,10 @@ export default withSentryConfig(
       poweredByHeader: false,
       reactStrictMode: true,
       serverExternalPackages: ['@electric-sql/pglite'],
-    }),
+      turbopack: {
+        root: process.cwd(),
+      },
+    })
   ),
   {
     // For all available options, see:
@@ -66,5 +69,5 @@ export default withSentryConfig(
 
     // Disable Sentry telemetry
     telemetry: false,
-  },
-);
+  }
+)

@@ -91,24 +91,24 @@ Clone this project and use it to create your own SaaS. You can check the live de
 
 **Live demo: [SaaS Boilerplate](https://react-saas.com)**
 
-| Landing Page | User Dashboard |
-| --- | --- |
+| Landing Page                                                                                                                      | User Dashboard                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Next.js Boilerplate SaaS Landing Page](public/assets/images/nextjs-boilerplate-saas-landing-page.png)](https://react-saas.com) | [![Next.js Boilerplate SaaS User Dashboard](public/assets/images/nextjs-boilerplate-saas-user-dashboard.png)](https://react-saas.com/dashboard) |
 
-| Team Management | User Profile |
-| --- | --- |
+| Team Management                                                                                                                                                                           | User Profile                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Next.js Boilerplate SaaS Team Management](public/assets/images/nextjs-boilerplate-saas-multi-tenancy.png)](https://react-saas.com/dashboard/organization-profile/organization-members) | [![Next.js Boilerplate SaaS User Profile](public/assets/images/nextjs-boilerplate-saas-user-profile.png)](https://react-saas.com/dashboard/user-profile) |
 
-| Sign Up | Sign In |
-| --- | --- |
+| Sign Up                                                                                                                         | Sign In                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | [![Next.js Boilerplate SaaS Sign Up](public/assets/images/nextjs-boilerplate-saas-sign-up.png)](https://react-saas.com/sign-up) | [![Next.js Boilerplate SaaS Sign In](public/assets/images/nextjs-boilerplate-saas-sign-in.png)](https://react-saas.com/sign-in) |
 
-| Landing Page with Dark Mode (Pro Version) | User Dashboard with Dark Mode (Pro Version) |
-| --- | --- |
+| Landing Page with Dark Mode (Pro Version)                                                                                                                              | User Dashboard with Dark Mode (Pro Version)                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Next.js Boilerplate SaaS Landing Page Dark Mode](public/assets/images/nextjs-boilerplate-saas-landing-page-dark-mode.png)](https://pro-demo.nextjs-boilerplate.com) | [![Next.js Boilerplate SaaS User Dashboard Dark Mode](public/assets/images/nextjs-boilerplate-saas-user-dashboard-sidebar-dark-mode.png)](https://pro-demo.nextjs-boilerplate.com/dashboard) |
 
-| User Dashboard with Sidebar (Pro Version) |
-| --- |
+| User Dashboard with Sidebar (Pro Version)                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Next.js Boilerplate SaaS User Dashboard Sidebar](public/assets/images/nextjs-boilerplate-saas-user-dashboard-sidebar.png)](https://pro-demo.nextjs-boilerplate.com) |
 
 ### Features
@@ -195,7 +195,7 @@ Then, you can run the project locally in development mode with live reload by ex
 npm run dev
 ```
 
-Open http://localhost:3000 with your favorite browser to see your project.
+Open <http://localhost:3000> with your favorite browser to see your project.
 
 Need advanced features? Multi-tenancy & Teams, Roles & Permissions, Shadcn UI, End-to-End Typesafety with oRPC, Stripe Payment, Light / Dark mode. Try [Next.js Boilerplate Pro](https://nextjs-boilerplate.com/pro-saas-starter-kit).
 
@@ -203,35 +203,36 @@ Need advanced features? Multi-tenancy & Teams, Roles & Permissions, Shadcn UI, E
 
 This project offers both a free open-source version and a premium Pro version. Here's a detailed comparison:
 
-| Features | Free Version | Pro Version |
-|---------|:------------:|:-----------:|
-| **Authentication** | ✅ | ✅ |
-| **Social Login (Google, Facebook, GitHub, etc.)** | ✅ | ✅ |
-| **Multi-Factor Auth & User Impersonation** | ✅ | ✅ |
-| **Multi-tenancy & Team Support** | ✅ | ✅ |
-| **Role-based Access Control (RBAC)** | ✅ | ✅ |
-| **Landing Page (Hero, Features, Pricing)** | ✅ | ✅ |
-| **Internationalization (i18n)** | ✅ | ✅ |
-| **Drizzle ORM & Dev Database** | ✅ | ✅ |
-| **GitHub Actions** | ✅ | ✅ |
-| **VSCode Configuration** | ✅ | ✅ |
-| **[Sentry Error Monitoring](https://sentry.io/for/nextjs/?utm_source=github&utm_medium=paid-community&utm_campaign=general-fy25q1-nextjs&utm_content=github-banner-nextjsboilerplate-logo)** | ✅ | ✅ |
-| **Shadcn UI** | ✅ | ✅ |
-| **Next.js** | 14 | 16 |
-| **React** | 18 | 19 |
-| **Tailwind CSS** | 3 | 4 |
-| **ESLint** | 8 | 9 |
-| **User Dashboard** | Basic | Extended |
-| **Code Quality Tools** | Basic | Extended |
-| **Testing: Unit, Integration, E2E, Visual** | Basic | Extended |
-| **Stripe Integration** | ❌ | ✅ |
-| **Todo App Example (CRUD)** | ❌ | ✅ |
-| **End-to-End Typesafe APIs (oRPC)** | ❌ | ✅ |
-| **Dark Mode** | ❌ | ✅ |
-| **Latest version** | ❌ | ✅ |
-| **Email support (1 year)** | ❌ | ✅ |
+| Features                                                                                                                                                                                     | Free Version | Pro Version |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------: | :---------: |
+| **Authentication**                                                                                                                                                                           |      ✅      |     ✅      |
+| **Social Login (Google, Facebook, GitHub, etc.)**                                                                                                                                            |      ✅      |     ✅      |
+| **Multi-Factor Auth & User Impersonation**                                                                                                                                                   |      ✅      |     ✅      |
+| **Multi-tenancy & Team Support**                                                                                                                                                             |      ✅      |     ✅      |
+| **Role-based Access Control (RBAC)**                                                                                                                                                         |      ✅      |     ✅      |
+| **Landing Page (Hero, Features, Pricing)**                                                                                                                                                   |      ✅      |     ✅      |
+| **Internationalization (i18n)**                                                                                                                                                              |      ✅      |     ✅      |
+| **Drizzle ORM & Dev Database**                                                                                                                                                               |      ✅      |     ✅      |
+| **GitHub Actions**                                                                                                                                                                           |      ✅      |     ✅      |
+| **VSCode Configuration**                                                                                                                                                                     |      ✅      |     ✅      |
+| **[Sentry Error Monitoring](https://sentry.io/for/nextjs/?utm_source=github&utm_medium=paid-community&utm_campaign=general-fy25q1-nextjs&utm_content=github-banner-nextjsboilerplate-logo)** |      ✅      |     ✅      |
+| **Shadcn UI**                                                                                                                                                                                |      ✅      |     ✅      |
+| **Next.js**                                                                                                                                                                                  |      14      |     16      |
+| **React**                                                                                                                                                                                    |      18      |     19      |
+| **Tailwind CSS**                                                                                                                                                                             |      3       |      4      |
+| **ESLint**                                                                                                                                                                                   |      8       |      9      |
+| **User Dashboard**                                                                                                                                                                           |    Basic     |  Extended   |
+| **Code Quality Tools**                                                                                                                                                                       |    Basic     |  Extended   |
+| **Testing: Unit, Integration, E2E, Visual**                                                                                                                                                  |    Basic     |  Extended   |
+| **Stripe Integration**                                                                                                                                                                       |      ❌      |     ✅      |
+| **Todo App Example (CRUD)**                                                                                                                                                                  |      ❌      |     ✅      |
+| **End-to-End Typesafe APIs (oRPC)**                                                                                                                                                          |      ❌      |     ✅      |
+| **Dark Mode**                                                                                                                                                                                |      ❌      |     ✅      |
+| **Latest version**                                                                                                                                                                           |      ❌      |     ✅      |
+| **Email support (1 year)**                                                                                                                                                                   |      ❌      |     ✅      |
 
 **Live Demos:**
+
 - Free Version: [https://react-saas.com](https://react-saas.com)
 - Pro Version: [https://pro-demo.nextjs-boilerplate.com](https://pro-demo.nextjs-boilerplate.com)
 
@@ -346,7 +347,7 @@ npm run stripe:setup-price
 
 After running the command, you need to copy the price ID and paste it in `src/utils/AppConfig.ts` by updating the existing price ID with the new one.
 
-In your Stripe Dashboard, you are required to configure your customer portal settings at https://dashboard.stripe.com/test/settings/billing/portal. Most importantly, you need to save the settings.
+In your Stripe Dashboard, you are required to configure your customer portal settings at <https://dashboard.stripe.com/test/settings/billing/portal>. Most importantly, you need to save the settings.
 
 In your `.env` file, you need to update the `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` with your own Stripe Publishable key. You can find the key in your Stripe Dashboard. Then, you also need to create a new file named `.env.local` and add the following environment variables in the newly created file:
 
@@ -387,13 +388,13 @@ In the local environment, visual testing is disabled, and the terminal will disp
 The App Router folder is compatible with the Edge runtime. You can enable it by adding the following lines `src/app/layouts.tsx`:
 
 ```tsx
-export const runtime = 'edge';
+export const runtime = 'edge'
 ```
 
 For your information, the database migration is not compatible with the Edge runtime. So, you need to disable the automatic migration in `src/libs/DB.ts`:
 
 ```tsx
-await migrate(db, { migrationsFolder: './migrations' });
+await migrate(db, { migrationsFolder: './migrations' })
 ```
 
 After disabling it, you are required to run the migration manually with:
@@ -411,18 +412,18 @@ During the build process, database migrations are automatically executed, so the
 Then, you can generate a production build with:
 
 ```shell
-$ npm run build
+npm run build
 ```
 
 It generates an optimized production build of the boilerplate. To test the generated build, run:
 
 ```shell
-$ npm run start
+npm run start
 ```
 
 You also need to defined the environment variables `CLERK_SECRET_KEY` using your own key.
 
-This command starts a local server using the production build. You can now open http://localhost:3000 in your preferred browser to see the result.
+This command starts a local server using the production build. You can now open <http://localhost:3000> in your preferred browser to see the result.
 
 ### Error Monitoring
 
@@ -472,7 +473,7 @@ The project is already configured with Drizzle Studio to explore the database. Y
 npm run db:studio
 ```
 
-Then, you can open https://local.drizzle.studio with your favorite browser to explore your database.
+Then, you can open <https://local.drizzle.studio> with your favorite browser to explore your database.
 
 ### VSCode information (optional)
 
@@ -569,6 +570,6 @@ See [LICENSE](LICENSE) for more information.
 
 Made with ♥ by [CreativeDesignsGuru](https://creativedesignsguru.com) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/cloudposse.svg?style=social&label=Follow%20%40Ixartz)](https://twitter.com/ixartz)
 
-Looking for a custom boilerplate to kick off your project? I'd be glad to discuss how I can help you build one. Feel free to reach out anytime at contact@creativedesignsguru.com!
+Looking for a custom boilerplate to kick off your project? I'd be glad to discuss how I can help you build one. Feel free to reach out anytime at <contact@creativedesignsguru.com>!
 
 [![Sponsor Next JS Boilerplate](https://cdn.buymeacoffee.com/buttons/default-red.png)](https://github.com/sponsors/ixartz)

@@ -4,19 +4,19 @@ import { AllLocales } from '@/utils/AppConfig'
 
 export default getRequestConfig(async ({ requestLocale }) => {
   // Typically corresponds to `[locale]` segment
-  let locale: string
+  let locale = AllLocales[0] // default fallback
 
   try {
     const requested = await requestLocale
-    locale = (requested && AllLocales.includes(requested)) 
-      ? requested 
-      : AllLocales[0] // fallback to first locale
+    if (requested && AllLocales.includes(requested)) {
+      locale = requested
+    }
   } catch {
-    locale = AllLocales[0] // fallback on error
+    // keep default fallback
   }
 
   return {
-    locale: locale as any,
+    locale,
     messages: (await import(`../locales/${locale}.json`)).default,
-  }
+  } as any
 })

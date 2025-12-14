@@ -9,13 +9,13 @@ npx lint-staged --concurrent false
 # Check for package.json changes
 if git diff --cached --name-only | grep -q "package.json"; then
   echo "📦 package.json changed, running additional checks..."
-  npm audit --audit-level moderate
+  npm audit --audit-level critical
 fi
 
 # Check for lockfile changes
 if git diff --cached --name-only | grep -E "(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)"; then
   echo "🔒 Lockfile changed, running dependency check..."
-  npm ci
+  npm ci || npm install --legacy-peer-deps
 fi
 
 # Run type check

@@ -1,4 +1,5 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server'
+import type { Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
 import { CTA } from '@/templates/CTA'
 import { DemoBanner } from '@/templates/DemoBanner'
@@ -10,7 +11,9 @@ import { Navbar } from '@/templates/Navbar'
 import { Pricing } from '@/templates/Pricing'
 import { Sponsors } from '@/templates/Sponsors'
 
-export async function generateMetadata(_props: { params: Promise<{ locale: string }> }) {
+export async function generateMetadata(_props: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
   await _props.params
   const t = await getTranslations('Index')
 
@@ -20,9 +23,8 @@ export async function generateMetadata(_props: { params: Promise<{ locale: strin
   }
 }
 
-const IndexPage = async (props: { params: Promise<{ locale: string }> }) => {
-  const { locale } = await props.params
-  setRequestLocale(locale)
+const IndexPage = async (_props: { params: Promise<{ locale: string }> }) => {
+  await _props.params
 
   return (
     <>
