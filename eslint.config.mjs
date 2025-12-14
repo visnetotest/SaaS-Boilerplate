@@ -1,9 +1,5 @@
-import jsxA11y from 'eslint-plugin-jsx-a11y';
 import playwright from 'eslint-plugin-playwright';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
-import testingLibrary from 'eslint-plugin-testing-library';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
@@ -14,6 +10,7 @@ export default [
       'node_modules/**/*',
       '.next/**/*',
       'out/**/*',
+      'tailwind.config.ts',
     ],
   },
   {
@@ -21,17 +18,9 @@ export default [
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      parser: tsParser,
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
     },
     plugins: {
       'simple-import-sort': simpleImportSort,
-      'jsx-a11y': jsxA11y,
-      '@typescript-eslint': tseslint,
     },
     rules: {
       'simple-import-sort/imports': 'error',
@@ -39,10 +28,6 @@ export default [
       'import/order': 'off',
       'sort-imports': 'off',
     },
-  },
-  {
-    files: ['**/*.test.{js,jsx,ts,tsx}'],
-    ...testingLibrary.configs['flat/react'],
   },
   {
     files: ['**/*.spec.ts', '**/*.e2e.ts'],

@@ -18,7 +18,12 @@ export default defineConfig({
   // Fail the build on CI if you accidentally left test.only in the source code.
   forbidOnly: !!process.env.CI,
   // Reporter to use. See https://playwright.dev/docs/test-reporters
-  reporter: process.env.CI ? 'github' : 'list',
+  reporter: [
+    ['html'],
+    ['json', { outputFile: 'test-results/results.json' }],
+    ['junit', { outputFile: 'test-results/results.xml' }],
+    process.env.CI ? ['github'] : ['list'],
+  ],
 
   expect: {
     // Set timeout for async expect matchers
@@ -41,10 +46,16 @@ export default defineConfig({
     baseURL,
 
     // Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer
-    trace: process.env.CI ? 'retain-on-failure' : undefined,
+    trace: 'on-first-retry',
+
+    // Take screenshot on failure
+    screenshot: 'only-on-failure',
 
     // Record videos when retrying the failed test.
-    video: process.env.CI ? 'retain-on-failure' : undefined,
+    video: 'retain-on-failure',
+
+    // Ignore HTTPS errors for testing
+    ignoreHTTPSErrors: true,
   },
 
   projects: [

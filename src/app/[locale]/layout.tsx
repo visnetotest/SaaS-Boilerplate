@@ -1,8 +1,8 @@
 import '@/styles/global.css';
 
 import type { Metadata } from 'next';
-import { NextIntlClientProvider, useMessages } from 'next-intl';
-import { unstable_setRequestLocale } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 
 import { DemoBadge } from '@/components/DemoBadge';
 import { AllLocales } from '@/utils/AppConfig';
@@ -43,8 +43,8 @@ export default async function RootLayout(props: {
   const { locale } = await props.params;
   unstable_setRequestLocale(locale);
 
-  // Using internationalization in Client Components
-  const messages = useMessages();
+  // Get messages on server side
+  const messages = await getTranslations();
 
   // The `suppressHydrationWarning` in <html> is used to prevent hydration errors caused by `next-themes`.
   // Solution provided by the package itself: https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
