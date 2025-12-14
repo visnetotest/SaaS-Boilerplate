@@ -36,11 +36,12 @@ export function generateStaticParams() {
   return AllLocales.map(locale => ({ locale }));
 }
 
-export default function RootLayout(props: {
+export default async function RootLayout(props: {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }) {
-  unstable_setRequestLocale(props.params.locale);
+  const { locale } = await props.params;
+  unstable_setRequestLocale(locale);
 
   // Using internationalization in Client Components
   const messages = useMessages();
@@ -51,12 +52,12 @@ export default function RootLayout(props: {
   // The `suppressHydrationWarning` attribute in <body> is used to prevent hydration errors caused by Sentry Overlay,
   // which dynamically adds a `style` attribute to the body tag.
   return (
-    <html lang={props.params.locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         {/* PRO: Dark mode support for Shadcn UI */}
         <NextIntlClientProvider
-          locale={props.params.locale}
-          messages={messages}
+          locale={locale}
+          messages={messages as any}
         >
           {props.children}
 

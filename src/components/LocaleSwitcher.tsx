@@ -1,6 +1,7 @@
 'use client';
 
 import { useLocale } from 'next-intl';
+import { useTransition } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,16 +18,25 @@ export const LocaleSwitcher = () => {
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
+  const [isPending, startTransition] = useTransition();
 
   const handleChange = (value: string) => {
-    router.push(pathname, { locale: value });
-    router.refresh();
+    startTransition(() => {
+      router.push(pathname, { locale: value });
+      router.refresh();
+    });
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="p-2 focus-visible:ring-offset-0" variant="ghost" size="icon" aria-label="lang-switcher">
+        <Button 
+          className="p-2 focus-visible:ring-offset-0" 
+          variant="ghost" 
+          size="icon" 
+          aria-label="lang-switcher"
+          disabled={isPending}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="size-6 stroke-current stroke-2"

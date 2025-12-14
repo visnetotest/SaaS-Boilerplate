@@ -1,0 +1,96 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":automergeDigest",
+    ":automergeBranch",
+    ":maintainLockFilesWeekly",
+    ":prHourlyLimit2",
+    ":prConcurrentLimit10"
+  ],
+  "schedule": ["before 6am on monday"],
+  "timezone": "America/New_York",
+  "labels": ["dependencies", "renovate"],
+  "assignees": ["@maintainer"],
+  "reviewers": ["@maintainer"],
+  "packageRules": [
+    {
+      "groupName": "Next.js ecosystem",
+      "matchPackagePatterns": ["next", "@next/*", "next-intl"],
+      "automerge": true
+    },
+    {
+      "groupName": "React ecosystem",
+      "matchPackagePatterns": ["react", "@types/react", "react-dom"],
+      "automerge": false
+    },
+    {
+      "groupName": "Testing",
+      "matchPackagePatterns": ["vitest", "@vitest/*", "@testing-library/*", "playwright"],
+      "automerge": true
+    },
+    {
+      "groupName": "Linting and formatting",
+      "matchPackagePatterns": ["eslint", "@eslint/*", "prettier"],
+      "automerge": true
+    },
+    {
+      "groupName": "TypeScript",
+      "matchPackagePatterns": ["typescript", "@types/*"],
+      "automerge": true
+    },
+    {
+      "groupName": "Database",
+      "matchPackagePatterns": ["drizzle*", "@electric-sql/*"],
+      "automerge": false
+    },
+    {
+      "groupName": "Authentication",
+      "matchPackagePatterns": ["@clerk/*"],
+      "automerge": false
+    },
+    {
+      "groupName": "UI components",
+      "matchPackagePatterns": ["@radix-ui/*", "lucide-react", "class-variance-authority"],
+      "automerge": true
+    },
+    {
+      "groupName": "Storybook",
+      "matchPackagePatterns": ["@storybook/*", "storybook"],
+      "automerge": true
+    },
+    {
+      "groupName": "Monitoring",
+      "matchPackagePatterns": ["@sentry/*", "@spotlightjs/*"],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security", "renovate"],
+    "assignees": ["@maintainer"],
+    "schedule": ["at any time"],
+    "automerge": false
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["before 6am on sunday"]
+  },
+  "major": {
+    "automerge": false
+  },
+  "minor": {
+    "automerge": true
+  },
+  "patch": {
+    "automerge": true
+  },
+  "pin": {
+    "automerge": true
+  },
+  "digest": {
+    "automerge": true
+  }
+}

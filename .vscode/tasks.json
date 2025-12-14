@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Project wide type checking with TypeScript",
+      "label": "Type Check",
       "type": "npm",
       "script": "check-types",
       "problemMatcher": ["$tsc"],
@@ -16,6 +16,78 @@
         "clear": true,
         "reveal": "never"
       }
+    },
+    {
+      "label": "Lint",
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "build"
+    },
+    {
+      "label": "Lint Fix",
+      "type": "npm",
+      "script": "lint:fix",
+      "problemMatcher": ["$eslint-stylish"],
+      "group": "build"
+    },
+    {
+      "label": "Unit Tests",
+      "type": "npm",
+      "script": "test:unit",
+      "group": "test",
+      "presentation": {
+        "clear": true,
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Integration Tests",
+      "type": "npm",
+      "script": "test:integration",
+      "group": "test",
+      "presentation": {
+        "clear": true,
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "E2E Tests",
+      "type": "npm",
+      "script": "test:e2e",
+      "group": "test",
+      "presentation": {
+        "clear": true,
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Build",
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "presentation": {
+        "clear": true,
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Clean",
+      "type": "npm",
+      "script": "clean",
+      "group": "build"
+    },
+    {
+      "label": "Database Generate",
+      "type": "npm",
+      "script": "db:generate",
+      "group": "build"
+    },
+    {
+      "label": "Database Migrate",
+      "type": "npm",
+      "script": "db:migrate",
+      "group": "build"
     }
   ]
 }

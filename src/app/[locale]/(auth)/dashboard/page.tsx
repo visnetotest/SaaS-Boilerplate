@@ -1,11 +1,12 @@
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
+import { ClientWrapper } from '@/components/ClientWrapper';
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { SponsorLogos } from '@/features/sponsors/SponsorLogos';
 
-const DashboardIndexPage = () => {
-  const t = useTranslations('DashboardIndex');
+const DashboardIndexPage = async () => {
+  const t = await getTranslations('DashboardIndex');
 
   return (
     <>
@@ -51,7 +52,9 @@ const DashboardIndexPage = () => {
             </div>
 
             <div className="mt-7">
-              <SponsorLogos />
+              <ClientWrapper>
+                <SponsorLogos />
+              </ClientWrapper>
             </div>
           </>
         )}
