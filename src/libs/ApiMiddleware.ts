@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 
+import { auth } from '@/libs/auth'
+
 export interface ApiErrorResponse {
   code: string
   message: string
@@ -184,28 +186,31 @@ export function withAuth(options: { required?: boolean; roles?: string[] } = {})
     handler: (req: NextRequest, user: any, ...args: any[]) => Promise<NextResponse>
   ) {
     return withErrorHandler(async (req: NextRequest, ...args: any[]): Promise<NextResponse> => {
-      // TODO: Implement actual authentication logic
-      // This is a placeholder that should integrate with your auth system (Clerk, Auth0, etc.)
+      // Get Auth.js session
+      const session = await auth()
 
-      const authHeader = req.headers.get('authorization')
-      if (!authHeader && options.required !== false) {
-        throw ApiError.unauthorized('Authorization header required')
+      if (!session?.user && options.required !== false) {
+        throw ApiError.unauthorized('Authentication required')
       }
 
-      // Mock user for now - replace with actual auth logic
+      if (!session?.user) {
+        // No user required or not authenticated
+        return await handler(req, null, ...args)
+      }
+
+      // Create user object for handler
       const user = {
-        id: 'mock-user-id',
-        email: 'user@example.com',
-        roles: ['user'],
-        tenantId: 'mock-tenant-id',
+        id: session.user.id,
+        email: session.user.email,
+        name: session.user.name,
+        image: session.user.image,
+        // TODO: Add tenant, organization, roles from database
       }
 
-      // Check role requirements
+      // Check role requirements (basic for now)
       if (options.roles && options.roles.length > 0) {
-        const hasRequiredRole = options.roles.some((role) => user.roles.includes(role))
-        if (!hasRequiredRole) {
-          throw ApiError.forbidden('Insufficient permissions')
-        }
+        // TODO: Implement actual role checking from database
+        console.warn('Role checking not implemented yet')
       }
 
       return await handler(req, user, ...args)

@@ -3,12 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { tenantService } from '@/services/TenantService'
 
 // GET /api/organizations/[id] - Get a specific organization
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { searchParams } = new URL(request.url)
     const tenantId = searchParams.get('tenantId')
+    const { id } = await params
 
-    const organization = await tenantService.getOrganization(params.id, tenantId || undefined)
+    const organization = await tenantService.getOrganization(id, tenantId || undefined)
 
     return NextResponse.json({
       success: true,

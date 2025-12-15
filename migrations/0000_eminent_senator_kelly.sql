@@ -33,6 +33,23 @@ CREATE TABLE IF NOT EXISTS "audit_log" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "organization" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"tenant_id" uuid NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"description" text,
+	"logo" varchar(500),
+	"website" varchar(500),
+	"stripe_customer_id" text,
+	"stripe_subscription_id" text,
+	"stripe_subscription_price_id" text,
+	"stripe_subscription_status" text,
+	"stripe_subscription_current_period_end" bigint,
+	"settings" jsonb,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "plugin" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -107,6 +124,15 @@ CREATE TABLE IF NOT EXISTS "tenant" (
 	CONSTRAINT "tenant_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "todo" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"owner_id" text NOT NULL,
+	"title" text NOT NULL,
+	"message" text NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "user_role" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -141,15 +167,6 @@ CREATE TABLE IF NOT EXISTS "user" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-DROP INDEX IF EXISTS "stripe_customer_id_idx";--> statement-breakpoint
-ALTER TABLE "organization" ALTER COLUMN "id" SET DATA TYPE uuid;--> statement-breakpoint
-ALTER TABLE "organization" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();--> statement-breakpoint
-ALTER TABLE "organization" ADD COLUMN "tenant_id" uuid NOT NULL;--> statement-breakpoint
-ALTER TABLE "organization" ADD COLUMN "name" varchar(255) NOT NULL;--> statement-breakpoint
-ALTER TABLE "organization" ADD COLUMN "description" text;--> statement-breakpoint
-ALTER TABLE "organization" ADD COLUMN "logo" varchar(500);--> statement-breakpoint
-ALTER TABLE "organization" ADD COLUMN "website" varchar(500);--> statement-breakpoint
-ALTER TABLE "organization" ADD COLUMN "settings" jsonb;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "analytics_event" ADD CONSTRAINT "analytics_event_tenant_id_tenant_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenant"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
@@ -170,6 +187,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "organization" ADD CONSTRAINT "organization_tenant_id_tenant_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenant"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -238,6 +261,8 @@ CREATE INDEX IF NOT EXISTS "audit_log_user_id_idx" ON "audit_log" USING btree ("
 CREATE INDEX IF NOT EXISTS "audit_log_action_idx" ON "audit_log" USING btree ("action");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "audit_log_resource_type_idx" ON "audit_log" USING btree ("resource_type");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "audit_log_created_at_idx" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "organization_tenant_id_idx" ON "organization" USING btree ("tenant_id");--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "organization_stripe_customer_id_idx" ON "organization" USING btree ("stripe_customer_id");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "plugin_slug_idx" ON "plugin" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "plugin_status_idx" ON "plugin" USING btree ("status");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "plugin_category_idx" ON "plugin" USING btree ("category");--> statement-breakpoint
@@ -258,12 +283,4 @@ CREATE INDEX IF NOT EXISTS "user_tenant_id_idx" ON "user" USING btree ("tenant_i
 CREATE INDEX IF NOT EXISTS "user_organization_id_idx" ON "user" USING btree ("organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "user_email_idx" ON "user" USING btree ("email");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "user_external_id_idx" ON "user" USING btree ("external_id","provider");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "user_status_idx" ON "user" USING btree ("status");--> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "organization" ADD CONSTRAINT "organization_tenant_id_tenant_id_fk" FOREIGN KEY ("tenant_id") REFERENCES "public"."tenant"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "organization_tenant_id_idx" ON "organization" USING btree ("tenant_id");--> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS "organization_stripe_customer_id_idx" ON "organization" USING btree ("stripe_customer_id");
+CREATE INDEX IF NOT EXISTS "user_status_idx" ON "user" USING btree ("status");

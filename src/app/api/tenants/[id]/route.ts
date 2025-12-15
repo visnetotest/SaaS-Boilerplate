@@ -18,9 +18,10 @@ const UpdateTenantSchema = z
   .partial()
 
 // GET /api/tenants/[id] - Get a specific tenant
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const tenant = await tenantService.getTenant(params.id)
+    const { id } = await params
+    const tenant = await tenantService.getTenant(id)
 
     return NextResponse.json({
       success: true,
@@ -50,12 +51,13 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 // PUT /api/tenants/[id] - Update a tenant
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json()
     const validatedData = UpdateTenantSchema.parse(body)
+    const { id } = await params
 
-    const tenant = await tenantService.updateTenant(params.id, validatedData)
+    const tenant = await tenantService.updateTenant(id, validatedData)
 
     return NextResponse.json({
       success: true,
@@ -96,9 +98,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 // DELETE /api/tenants/[id] - Deactivate a tenant
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const tenant = await tenantService.deactivateTenant(params.id)
+    const { id } = await params
+    const tenant = await tenantService.deactivateTenant(id)
 
     return NextResponse.json({
       success: true,
