@@ -136,6 +136,7 @@ Developer experience first, extremely flexible code structure and only keep what
 - 🦊 Husky for Git Hooks
 - 🚫 Lint-staged for running linters on Git staged files
 - 🚓 Lint git commit with Commitlint
+- 🔐 **Security Management**: Automated vulnerability scanning, secure defaults, production-safe dependencies
 - 📓 Write standard compliant commit messages with Commitizen
 - 🦺 Unit Testing with [Vitest](https://vitest.dev) and React Testing Library
 - 🧪 Integration and E2E Testing with [Playwright](https://playwright.dev)
@@ -152,6 +153,7 @@ Developer experience first, extremely flexible code structure and only keep what
 - 🤖 SEO metadata, JSON-LD and Open Graph tags
 - 🗺️ Sitemap.xml and robots.txt
 - ⌘ Database exploration with Drizzle Studio and CLI migration tool with Drizzle Kit
+- 🔐 **Security Management**: Automated vulnerability scanning (`npm audit`), secure defaults, production-safe dependencies
 - ⚙️ [Bundler Analyzer](https://www.npmjs.com/package/@next/bundle-analyzer)
 - 🌈 Include a FREE minimalist theme
 - 💯 Maximize lighthouse score
