@@ -1,35 +1,35 @@
-'use client';
+'use client'
 
-import { useTransition, useState } from 'react';
+import { useState, useTransition } from 'react'
 
 interface AsyncButtonProps {
-  children: React.ReactNode;
-  onClick: () => Promise<void> | void;
-  className?: string;
-  disabled?: boolean;
+  children: React.ReactNode
+  onClick: () => Promise<void> | void
+  className?: string
+  disabled?: boolean
 }
 
-export const AsyncButton = ({ 
-  children, 
-  onClick, 
-  className = '', 
-  disabled = false 
+export const AsyncButton = ({
+  children,
+  onClick,
+  className = '',
+  disabled = false,
 }: AsyncButtonProps) => {
-  const [isPending, startTransition] = useTransition();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPending, startTransition] = useTransition()
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleClick = () => {
-    if (isLoading || isPending || disabled) return;
-    
+    if (isLoading || isPending || disabled) return
+
     startTransition(async () => {
-      setIsLoading(true);
+      setIsLoading(true)
       try {
-        await onClick();
+        await onClick()
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-    });
-  };
+    })
+  }
 
   return (
     <button
@@ -38,13 +38,11 @@ export const AsyncButton = ({
       className={`relative ${className}`}
     >
       {(isLoading || isPending) && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <div className='absolute inset-0 flex items-center justify-center'>
+          <div className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent' />
         </div>
       )}
-      <span className={isLoading || isPending ? 'opacity-0' : ''}>
-        {children}
-      </span>
+      <span className={isLoading || isPending ? 'opacity-0' : ''}>{children}</span>
     </button>
-  );
-};
+  )
+}

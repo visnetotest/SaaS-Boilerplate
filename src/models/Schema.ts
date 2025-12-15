@@ -377,6 +377,271 @@ export const systemConfigSchema = pgTable(
 )
 
 // =============================================================================
+// MICROSERVICES SUPPORT & HEALTH MONITORING
+// =============================================================================
+
+export const serviceRegistrySchema = pgTable(
+  'service_registry',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 100 }).notNull().unique(),
+    version: varchar('version', { length: 50 }).notNull(),
+
+    // Service endpoints
+    baseUrl: varchar('base_url', { length: 500 }).notNull(),
+    healthEndpoint: varchar('health_endpoint', { length: 500 }),
+    docsEndpoint: varchar('docs_endpoint', { length: 500 }),
+
+    // Service metadata
+    description: text('description'),
+    category: varchar('category', { length: 100 }),
+    tags: jsonb('tags').$type<string[]>(),
+
+    // Service status
+    status: varchar('status', { length: 50 }).default('inactive').notNull(), // active, inactive, degraded, down
+    isInternal: boolean('is_internal').default(false),
+
+    // Health monitoring
+    lastHealthCheck: timestamp('last_health_check', { mode: 'date' }),
+    responseTime: integer('response_time'), // in milliseconds
+    uptime: integer('uptime'), // in seconds
+
+    // Configuration
+    config: jsonb('config').$type<Record<string, any>>(),
+    secrets: jsonb('secrets').$type<Record<string, string>>(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    slugIdx: uniqueIndex('service_registry_slug_idx').on(table.slug),
+    statusIdx: index('service_registry_status_idx').on(table.status),
+    categoryIdx: index('service_registry_category_idx').on(table.category),
+  })
+)
+
+export const apiGatewaySchema = pgTable(
+  'api_gateway',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: varchar('name', { length: 255 }).notNull(),
+    slug: varchar('slug', { length: 100 }).notNull().unique(),
+
+    // Route configuration
+    path: varchar('path', { length: 500 }).notNull(),
+    method: varchar('method', { length: 10 }).notNull(), // GET, POST, PUT, DELETE, etc.
+    targetServiceId: uuid('target_service_id')
+      .notNull()
+      .references(() => serviceRegistrySchema.id, { onDelete: 'cascade' }),
+
+    // Rate limiting
+    rateLimit: integer('rate_limit'), // requests per minute
+    burstLimit: integer('burst_limit'), // burst capacity
+
+    // Authentication & authorization
+    requiresAuth: boolean('requires_auth').default(true),
+    allowedRoles: jsonb('allowed_roles').$type<string[]>(),
+
+    // Status
+    status: varchar('status', { length: 50 }).default('active').notNull(),
+
+    // Metadata
+    description: text('description'),
+    config: jsonb('config').$type<Record<string, any>>(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    slugIdx: uniqueIndex('api_gateway_slug_idx').on(table.slug),
+    targetServiceIdIdx: index('api_gateway_target_service_id_idx').on(table.targetServiceId),
+    pathMethodIdx: uniqueIndex('api_gateway_path_method_idx').on(table.path, table.method),
+    statusIdx: index('api_gateway_status_idx').on(table.status),
+  })
+)
+
+// =============================================================================
+// ADVANCED ANALYTICS & PERFORMANCE MONITORING
+// =============================================================================
+
+export const performanceMetricsSchema = pgTable(
+  'performance_metrics',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').references(() => tenantSchema.id, { onDelete: 'cascade' }),
+    serviceId: uuid('service_id').references(() => serviceRegistrySchema.id),
+
+    // Metric details
+    metricName: varchar('metric_name', { length: 100 }).notNull(),
+    metricType: varchar('metric_type', { length: 50 }).notNull(), // counter, gauge, histogram, timing
+    value: bigint('value', { mode: 'number' }).notNull(),
+    unit: varchar('unit', { length: 20 }), // ms, bytes, requests, etc.
+
+    // Context
+    endpoint: varchar('endpoint', { length: 500 }),
+    userId: uuid('user_id').references(() => userSchema.id),
+    sessionId: varchar('session_id', { length: 255 }),
+
+    // Dimensions
+    tags: jsonb('tags').$type<Record<string, string>>(),
+    metadata: jsonb('metadata').$type<Record<string, any>>(),
+
+    // Timestamps
+    timestamp: timestamp('timestamp', { mode: 'date' }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    tenantIdIdx: index('performance_metrics_tenant_id_idx').on(table.tenantId),
+    serviceIdIdx: index('performance_metrics_service_id_idx').on(table.serviceId),
+    metricNameIdx: index('performance_metrics_metric_name_idx').on(table.metricName),
+    timestampIdx: index('performance_metrics_timestamp_idx').on(table.timestamp),
+    metricTypeIdx: index('performance_metrics_metric_type_idx').on(table.metricType),
+  })
+)
+
+export const errorTrackingSchema = pgTable(
+  'error_tracking',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').references(() => tenantSchema.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => userSchema.id),
+    serviceId: uuid('service_id').references(() => serviceRegistrySchema.id),
+
+    // Error details
+    errorType: varchar('error_type', { length: 100 }).notNull(),
+    errorMessage: text('error_message').notNull(),
+    stackTrace: text('stack_trace'),
+
+    // Context
+    endpoint: varchar('endpoint', { length: 500 }),
+    method: varchar('method', { length: 10 }),
+    userAgent: text('user_agent'),
+    ipAddress: varchar('ip_address', { length: 45 }),
+
+    // Severity
+    severity: varchar('severity', { length: 20 }).default('error').notNull(), // debug, info, warning, error, critical
+
+    // Metadata
+    context: jsonb('context').$type<Record<string, any>>(),
+    tags: jsonb('tags').$type<string[]>(),
+
+    // Timestamps
+    timestamp: timestamp('timestamp', { mode: 'date' }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    tenantIdIdx: index('error_tracking_tenant_id_idx').on(table.tenantId),
+    userIdIdx: index('error_tracking_user_id_idx').on(table.userId),
+    serviceIdIdx: index('error_tracking_service_id_idx').on(table.serviceId),
+    errorTypeIdx: index('error_tracking_error_type_idx').on(table.errorType),
+    severityIdx: index('error_tracking_severity_idx').on(table.severity),
+    timestampIdx: index('error_tracking_timestamp_idx').on(table.timestamp),
+  })
+)
+
+// =============================================================================
+// WORKFLOW AUTOMATION & BUSINESS PROCESSES
+// =============================================================================
+
+export const workflowSchema = pgTable(
+  'workflow',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenantSchema.id, { onDelete: 'cascade' }),
+
+    // Workflow details
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    category: varchar('category', { length: 100 }),
+
+    // Workflow configuration
+    definition: jsonb('definition').$type<Record<string, any>>().notNull(), // Workflow definition/steps
+    triggers: jsonb('triggers').$type<Record<string, any>>().notNull(), // Event triggers
+
+    // Status
+    status: varchar('status', { length: 50 }).default('draft').notNull(), // draft, active, paused, archived
+    version: varchar('version', { length: 50 }).default('1.0.0').notNull(),
+
+    // Settings
+    settings: jsonb('settings').$type<Record<string, any>>(),
+
+    // Metadata
+    createdBy: uuid('created_by').references(() => userSchema.id),
+    updatedBy: uuid('updated_by').references(() => userSchema.id),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    tenantIdIdx: index('workflow_tenant_id_idx').on(table.tenantId),
+    statusIdx: index('workflow_status_idx').on(table.status),
+    categoryIdx: index('workflow_category_idx').on(table.category),
+    createdByIdx: index('workflow_created_by_idx').on(table.createdBy),
+  })
+)
+
+export const workflowExecutionSchema = pgTable(
+  'workflow_execution',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workflowId: uuid('workflow_id')
+      .notNull()
+      .references(() => workflowSchema.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenantSchema.id, { onDelete: 'cascade' }),
+
+    // Execution details
+    triggeredBy: varchar('triggered_by', { length: 100 }), // event, manual, scheduled
+    triggeredById: uuid('triggered_by_id').references(() => userSchema.id),
+
+    // Status
+    status: varchar('status', { length: 50 }).default('running').notNull(), // running, completed, failed, cancelled
+
+    // Progress
+    currentStep: varchar('current_step', { length: 255 }),
+    progress: integer('progress').default(0), // 0-100 percentage
+
+    // Results
+    result: jsonb('result').$type<Record<string, any>>(),
+    error: text('error'),
+
+    // Timing
+    startedAt: timestamp('started_at', { mode: 'date' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+    duration: integer('duration'), // in seconds
+
+    // Context
+    context: jsonb('context').$type<Record<string, any>>(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    workflowIdIdx: index('workflow_execution_workflow_id_idx').on(table.workflowId),
+    tenantIdIdx: index('workflow_execution_tenant_id_idx').on(table.tenantId),
+    statusIdx: index('workflow_execution_status_idx').on(table.status),
+    startedAtIdx: index('workflow_execution_started_at_idx').on(table.startedAt),
+    triggeredByIdIdx: index('workflow_execution_triggered_by_id_idx').on(table.triggeredById),
+  })
+)
+
+// =============================================================================
 // LEGACY COMPATIBILITY (for backward compatibility)
 // =============================================================================
 
@@ -425,6 +690,24 @@ export type NewAnalyticsEvent = typeof analyticsEventSchema.$inferInsert
 
 export type SystemConfig = typeof systemConfigSchema.$inferSelect
 export type NewSystemConfig = typeof systemConfigSchema.$inferInsert
+
+export type ServiceRegistry = typeof serviceRegistrySchema.$inferSelect
+export type NewServiceRegistry = typeof serviceRegistrySchema.$inferInsert
+
+export type ApiGateway = typeof apiGatewaySchema.$inferSelect
+export type NewApiGateway = typeof apiGatewaySchema.$inferInsert
+
+export type PerformanceMetrics = typeof performanceMetricsSchema.$inferSelect
+export type NewPerformanceMetrics = typeof performanceMetricsSchema.$inferInsert
+
+export type ErrorTracking = typeof errorTrackingSchema.$inferSelect
+export type NewErrorTracking = typeof errorTrackingSchema.$inferInsert
+
+export type Workflow = typeof workflowSchema.$inferSelect
+export type NewWorkflow = typeof workflowSchema.$inferInsert
+
+export type WorkflowExecution = typeof workflowExecutionSchema.$inferSelect
+export type NewWorkflowExecution = typeof workflowExecutionSchema.$inferInsert
 
 export type Todo = typeof todoSchema.$inferSelect
 export type NewTodo = typeof todoSchema.$inferInsert

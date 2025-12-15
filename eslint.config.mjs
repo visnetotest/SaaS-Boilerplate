@@ -1,7 +1,7 @@
-import playwright from 'eslint-plugin-playwright';
-import simpleImportSort from 'eslint-plugin-simple-import-sort';
-import typescript from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
+import playwright from 'eslint-plugin-playwright'
+import simpleImportSort from 'eslint-plugin-simple-import-sort'
+import typescript from '@typescript-eslint/eslint-plugin'
+import typescriptParser from '@typescript-eslint/parser'
 
 export default [
   {
@@ -42,4 +42,4 @@ export default [
     files: ['**/*.spec.ts', '**/*.e2e.ts'],
     ...playwright.configs['flat/recommended'],
   },
-];
+]
