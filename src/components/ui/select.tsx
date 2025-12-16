@@ -11,7 +11,7 @@ export interface SelectProps {
   className?: string
 }
 
-const SelectItem = React.forwardRef<
+export const SelectItem = React.forwardRef<
   HTMLDivElement,
   {
     value: string
@@ -31,7 +31,7 @@ const SelectItem = React.forwardRef<
   )
 })
 
-const SelectTrigger = React.forwardRef<
+export const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   {
     children: React.ReactNode
@@ -121,5 +121,9 @@ export interface SelectContentProps {
 }
 
 export const SelectContent: React.FC<SelectContentProps> = ({ children }) => {
-  return <>{children}</>
+  return (
+    <div className='absolute top-full z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md'>
+      <div className='max-h-60 overflow-auto p-1'>{children}</div>
+    </div>
+  )
 }

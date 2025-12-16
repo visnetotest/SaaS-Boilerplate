@@ -4,6 +4,8 @@
 
 import Redis from 'ioredis'
 
+import { Env } from '@/libs/Env'
+
 export interface CacheOptions {
   ttl?: number // Time to live in seconds
   namespace?: string // Key namespace
@@ -35,8 +37,8 @@ export class RedisCacheService {
 
   constructor() {
     // Redis connection configuration
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
-    const redisPassword = process.env.REDIS_PASSWORD
+    const redisUrl = Env.REDIS_URL || 'redis://localhost:6379'
+    const redisPassword = Env.REDIS_PASSWORD
 
     this.redis = new Redis(redisUrl, {
       password: redisPassword,

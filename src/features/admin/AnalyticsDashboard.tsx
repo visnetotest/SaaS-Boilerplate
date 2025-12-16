@@ -1,404 +1,382 @@
-'use client'
+// =============================================================================
+// ANALYTICS DASHBOARD COMPONENT
+// =============================================================================
 
-import { Activity, BarChart, Download, Eye, TrendingUp, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Activity, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react'
+import React from 'react'
+import { useState } from 'react'
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent } from '@/components/ui/select'
+import { SelectItem } from '@/components/ui/select'
+import { useRealtimeAnalytics } from '@/services/RealtimeAnalytics'
 
-// Types
-interface AnalyticsStats {
-  totalUsers: number
-  activeUsers: number
-  totalTenants: number
-  activeTenants: number
-  totalRoles: number
-  auditLogsToday: number
-  userGrowthRate: number
-  tenantGrowthRate: number
-  systemUptime: number
-  errorRate: number
-}
+import { AdvancedReportBuilder } from './AdvancedReportBuilder'
 
-interface UserActivity {
-  date: string
-  activeUsers: number
-  newUsers: number
-  totalUsers: number
-}
+// Sample data generator
+const generateSampleData = () => {
+  const now = new Date()
+  const data = []
 
-interface TenantUsage {
-  id: string
-  name: string
-  users: number
-  apiCalls: number
-  storageGB: number
-  lastActive: string
-}
-
-export function AnalyticsDashboard() {
-  const [stats, setStats] = useState<AnalyticsStats | null>(null)
-  const [userActivity, setUserActivity] = useState<UserActivity[]>([])
-  const [topTenants, setTopTenants] = useState<TenantUsage[]>([])
-  const [timeRange, setTimeRange] = useState('7d')
-  const [loading, setLoading] = useState(true)
-
-  // Mock data fetch (in real app, this would be API calls)
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        setLoading(true)
-
-        // Mock stats
-        setStats({
-          totalUsers: 1247,
-          activeUsers: 892,
-          totalTenants: 45,
-          activeTenants: 42,
-          totalRoles: 128,
-          auditLogsToday: 1847,
-          userGrowthRate: 12.4,
-          tenantGrowthRate: 8.2,
-          systemUptime: 99.9,
-          errorRate: 0.02,
-        })
-
-        // Mock user activity
-        const mockActivity: UserActivity[] = []
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date()
-          date.setDate(date.getDate() - i)
-          mockActivity.push({
-            date: date.toISOString().split('T')[0] || '',
-            activeUsers: Math.floor(Math.random() * 200) + 700,
-            newUsers: Math.floor(Math.random() * 20) + 5,
-            totalUsers: 1247 - i * 5,
-          })
-        }
-        setUserActivity(mockActivity)
-
-        // Mock top tenants
-        setTopTenants([
-          {
-            id: '1',
-            name: 'Acme Corporation',
-            users: 125,
-            apiCalls: 54230,
-            storageGB: 12.4,
-            lastActive: '2 hours ago',
-          },
-          {
-            id: '2',
-            name: 'Tech Startup LLC',
-            users: 89,
-            apiCalls: 32150,
-            storageGB: 8.7,
-            lastActive: '5 minutes ago',
-          },
-          {
-            id: '3',
-            name: 'Global Enterprise',
-            users: 234,
-            apiCalls: 89450,
-            storageGB: 45.2,
-            lastActive: '1 hour ago',
-          },
-          {
-            id: '4',
-            name: 'Innovation Labs',
-            users: 67,
-            apiCalls: 21340,
-            storageGB: 6.8,
-            lastActive: '3 hours ago',
-          },
-          {
-            id: '5',
-            name: 'Digital Agency',
-            users: 98,
-            apiCalls: 41280,
-            storageGB: 11.3,
-            lastActive: '30 minutes ago',
-          },
-        ])
-      } catch (error) {
-        console.error('Error fetching analytics:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAnalytics()
-  }, [timeRange])
-
-  const handleExport = (type: 'users' | 'tenants' | 'activity') => {
-    alert(`Export ${type} data for ${timeRange} period`)
+  for (let i = 23; i >= 0; i--) {
+    const timestamp = new Date(now.getTime() - i * 60 * 60 * 1000)
+    data.push({
+      timestamp: timestamp.toISOString(),
+      value: Math.floor(Math.random() * 100) + 50,
+    })
   }
 
-  if (loading && !stats) {
-    return (
-      <div className='flex items-center justify-center h-64'>
-        <div className='text-muted-foreground'>Loading analytics...</div>
-      </div>
-    )
+  return data
+}
+
+// Metric Grid Component
+function MetricGridCard({
+  metric,
+  unit,
+  current,
+  change,
+  trend,
+}: {
+  metric: string
+  unit: string
+  current: number
+  change: number
+  trend: 'up' | 'down' | 'stable'
+}) {
+  const TrendIcon = trend === 'up' ? TrendingUp : Activity
+  const trendColor =
+    trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-600'
+
+  return (
+    <Card>
+      <CardContent className='p-6'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <p className='text-sm font-medium text-gray-600'>{metric}</p>
+            <p className='text-2xl font-bold'>
+              {current}
+              <span className='text-sm font-normal text-gray-500 ml-1'>{unit}</span>
+            </p>
+          </div>
+          <div className={`flex items-center space-x-1 ${trendColor}`}>
+            <TrendIcon className='h-4 w-4' />
+            <span className='text-sm font-medium'>
+              {change > 0 ? '+' : ''}
+              {change}%
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Alerts Component
+function SystemAlerts() {
+  const { alerts, acknowledgeAlert, resolveAlert } = useRealtimeAnalytics()
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical':
+        return 'bg-red-500'
+      case 'high':
+        return 'bg-orange-500'
+      case 'medium':
+        return 'bg-yellow-500'
+      case 'low':
+        return 'bg-blue-500'
+      default:
+        return 'bg-gray-500'
+    }
+  }
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'error':
+        return <AlertTriangle className='h-4 w-4' />
+      case 'warning':
+        return <AlertTriangle className='h-4 w-4' />
+      case 'info':
+        return <Activity className='h-4 w-4' />
+      case 'success':
+        return <CheckCircle className='h-4 w-4' />
+      default:
+        return <Activity className='h-4 w-4' />
+    }
   }
 
   return (
-    <div className='space-y-6'>
-      <div className='flex items-center justify-between'>
-        <h2 className='text-2xl font-bold'>Analytics Dashboard</h2>
-        <div className='flex gap-2'>
-          <div className='w-40'>
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <div className='flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm'>
-                <span className='block truncate'>
-                  {timeRange === '1d'
-                    ? 'Last 24 hours'
-                    : timeRange === '7d'
-                      ? 'Last 7 days'
-                      : timeRange === '30d'
-                        ? 'Last 30 days'
-                        : timeRange === '90d'
-                          ? 'Last 90 days'
-                          : 'Custom'}
-                </span>
+    <Card>
+      <CardHeader>
+        <CardTitle className='flex items-center gap-2'>
+          <AlertTriangle className='h-5 w-5' />
+          System Alerts
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className='space-y-3'>
+          {alerts.length === 0 ? (
+            <p className='text-sm text-gray-500 text-center py-4'>No active alerts</p>
+          ) : (
+            alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`p-3 rounded-lg border-l-4 ${getSeverityColor(alert.severity)} bg-white`}
+              >
+                <div className='flex items-start justify-between'>
+                  <div className='flex items-start gap-2'>
+                    <div className='text-gray-600 mt-1'>{getTypeIcon(alert.type)}</div>
+                    <div className='flex-1'>
+                      <p className='text-sm font-medium'>{alert.message}</p>
+                      <p className='text-xs text-gray-500 mt-1'>
+                        {alert.timestamp.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Badge variant={alert.acknowledged ? 'secondary' : 'destructive'}>
+                      {alert.acknowledged ? 'Acknowledged' : 'New'}
+                    </Badge>
+                    {!alert.acknowledged && (
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        onClick={() => acknowledgeAlert(alert.id)}
+                      >
+                        Acknowledge
+                      </Button>
+                    )}
+                    {alert.acknowledged && !alert.resolved && (
+                      <Button size='sm' variant='outline' onClick={() => resolveAlert(alert.id)}>
+                        Resolve
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <SelectContent>
-                <div
-                  className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                  onClick={() => setTimeRange('1d')}
-                >
-                  Last 24 hours
-                </div>
-                <div
-                  className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                  onClick={() => setTimeRange('7d')}
-                >
-                  Last 7 days
-                </div>
-                <div
-                  className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                  onClick={() => setTimeRange('30d')}
-                >
-                  Last 30 days
-                </div>
-                <div
-                  className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                  onClick={() => setTimeRange('90d')}
-                >
-                  Last 90 days
-                </div>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button variant='outline' onClick={() => handleExport('activity')}>
-            <Download className='h-4 w-4 mr-2' />
-            Export
-          </Button>
+            ))
+          )}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Custom Select implementation for this component
+function CustomSelect({
+  value,
+  onValueChange,
+  children,
+  placeholder,
+}: {
+  value?: string
+  onValueChange?: (value: string) => void
+  children: React.ReactNode
+  placeholder?: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <div className='relative w-full'>
+      <button
+        type='button'
+        onClick={() => setIsOpen(!isOpen)}
+        className='flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
+      >
+        <span className='block truncate'>{value || placeholder}</span>
+        <svg className='h-4 w-4 opacity-50' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 9l-7 7-7-7' />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className='absolute top-full z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md'>
+          <div className='max-h-60 overflow-auto p-1'>
+            {React.Children.map(children, (child) => {
+              if (React.isValidElement(child)) {
+                return React.cloneElement(child as React.ReactElement<any>, {
+                  onClick: () => {
+                    if (onValueChange) {
+                      onValueChange((child as any).props.value || (child as any).props.children)
+                    }
+                    setIsOpen(false)
+                  },
+                })
+              }
+              return child
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Main Analytics Dashboard Component
+export function AnalyticsDashboard() {
+  const { metrics, connected } = useRealtimeAnalytics()
+  const [selectedMetric, setSelectedMetric] = useState('userCount')
+  const [activeTab, setActiveTab] = useState<'realtime' | 'reports'>('realtime')
+
+  const metricOptions = [
+    { value: 'userCount', label: 'Total Users', unit: 'users' },
+    { value: 'activeUsers', label: 'Active Users', unit: 'users' },
+    { value: 'apiCalls', label: 'API Calls', unit: 'calls/min' },
+    { value: 'errorRate', label: 'Error Rate', unit: '%' },
+    { value: 'avgResponseTime', label: 'Avg Response Time', unit: 'ms' },
+    { value: 'cpuUsage', label: 'CPU Usage', unit: '%' },
+    { value: 'memoryUsage', label: 'Memory Usage', unit: '%' },
+  ]
+
+  const chartData = generateSampleData()
+
+  return (
+    <div className='space-y-6'>
+      {/* Tab Navigation */}
+      <div className='flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit'>
+        <button
+          onClick={() => setActiveTab('realtime')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'realtime'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Real-time Analytics
+        </button>
+        <button
+          onClick={() => setActiveTab('reports')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'reports'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Report Builder
+        </button>
       </div>
 
-      {/* Key Metrics */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Total Users</CardTitle>
-            <Users className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{stats?.totalUsers || 0}</div>
-            <p className='text-xs text-muted-foreground'>
-              <span className='text-green-600'>+{stats?.userGrowthRate || 0}%</span> from last
-              period
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Active Users</CardTitle>
-            <Activity className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{stats?.activeUsers || 0}</div>
-            <p className='text-xs text-muted-foreground'>
-              {stats?.totalUsers ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0}% of
-              total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>Total Tenants</CardTitle>
-            <BarChart className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{stats?.totalTenants || 0}</div>
-            <p className='text-xs text-muted-foreground'>
-              <span className='text-green-600'>+{stats?.tenantGrowthRate || 0}%</span> from last
-              period
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-            <CardTitle className='text-sm font-medium'>System Uptime</CardTitle>
-            <TrendingUp className='h-4 w-4 text-muted-foreground' />
-          </CardHeader>
-          <CardContent>
-            <div className='text-2xl font-bold'>{stats?.systemUptime || 0}%</div>
-            <p className='text-xs text-muted-foreground'>Error rate: {stats?.errorRate || 0}%</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* User Activity Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>User Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='h-64 flex items-center justify-center bg-muted rounded'>
-              <div className='text-center text-muted-foreground'>
-                <BarChart className='h-12 w-12 mx-auto mb-4' />
-                <p>Activity chart would render here</p>
-                <p className='text-sm'>Integrate with Chart.js or Recharts</p>
-              </div>
+      {activeTab === 'realtime' ? (
+        <div className='space-y-6'>
+          {/* Connection Status */}
+          <div className='flex items-center justify-between'>
+            <h2 className='text-2xl font-bold'>Real-time Analytics</h2>
+            <div className='flex items-center gap-2'>
+              <div
+                className={`h-3 w-3 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`}
+              />
+              <span className='text-sm text-gray-600'>
+                {connected ? 'Connected' : 'Disconnected'}
+              </span>
             </div>
-            <div className='mt-4 space-y-2'>
-              {userActivity.slice(0, 5).map((activity) => (
-                <div key={activity.date} className='flex items-center justify-between text-sm'>
-                  <span>{new Date(activity.date).toLocaleDateString()}</span>
-                  <div className='flex gap-4'>
-                    <span>Active: {activity.activeUsers}</span>
-                    <span>New: {activity.newUsers}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Top Tenants */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Tenants by Usage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-4'>
-              {topTenants.map((tenant) => (
-                <div key={tenant.id} className='flex items-center justify-between'>
-                  <div>
-                    <div className='font-medium'>{tenant.name}</div>
-                    <div className='text-sm text-muted-foreground'>
-                      {tenant.users} users • {tenant.apiCalls.toLocaleString()} API calls
+          {/* Metrics Grid */}
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+            <MetricGridCard
+              metric='Total Users'
+              unit='users'
+              current={metrics?.userCount || 0}
+              change={12.5}
+              trend='up'
+            />
+            <MetricGridCard
+              metric='Active Users'
+              unit='users'
+              current={metrics?.activeUsers || 0}
+              change={8.2}
+              trend='up'
+            />
+            <MetricGridCard
+              metric='API Calls'
+              unit='calls/min'
+              current={metrics?.apiCalls || 0}
+              change={-3.4}
+              trend='down'
+            />
+            <MetricGridCard
+              metric='Error Rate'
+              unit='%'
+              current={Math.round(metrics?.errorRate || 0)}
+              change={-15.7}
+              trend='stable'
+            />
+          </div>
+
+          {/* Chart and Alerts */}
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+            <div className='lg:col-span-2'>
+              <Card>
+                <CardHeader>
+                  <CardTitle className='flex items-center justify-between'>
+                    <div className='flex items-center gap-2'>
+                      <Activity className='h-5 w-5' />
+                      Metrics Chart
                     </div>
+                    <CustomSelect
+                      value={selectedMetric}
+                      onValueChange={setSelectedMetric}
+                      placeholder='Select metric'
+                    >
+                      {metricOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </CustomSelect>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className='h-64'>
+                    <ResponsiveContainer width='100%' height='100%'>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray='3 3' />
+                        <XAxis
+                          dataKey='timestamp'
+                          tickFormatter={(value) => new Date(value).toLocaleTimeString()}
+                        />
+                        <YAxis />
+                        <Tooltip
+                          labelFormatter={(value) => new Date(value).toLocaleString()}
+                          formatter={(value: any) => [`${value}`, 'Value']}
+                        />
+                        <Legend />
+                        <Line
+                          type='monotone'
+                          dataKey='value'
+                          stroke='#3b82f6'
+                          strokeWidth={2}
+                          name='Metric'
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className='text-right'>
-                    <Badge variant='outline'>{tenant.storageGB} GB</Badge>
-                    <div className='text-xs text-muted-foreground mt-1'>
-                      Last active: {tenant.lastActive}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Additional Stats */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-        <Card>
-          <CardHeader>
-            <CardTitle>System Health</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-3'>
-              <div className='flex justify-between'>
-                <span>Database</span>
-                <Badge variant='default'>Healthy</Badge>
-              </div>
-              <div className='flex justify-between'>
-                <span>API Services</span>
-                <Badge variant='default'>Operational</Badge>
-              </div>
-              <div className='flex justify-between'>
-                <span>Cache</span>
-                <Badge variant='default'>Normal</Badge>
-              </div>
-              <div className='flex justify-between'>
-                <span>Background Jobs</span>
-                <Badge variant='default'>Running</Badge>
-              </div>
+            {/* System Alerts */}
+            <div className='lg:col-span-1'>
+              <SystemAlerts />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-2'>
-              <div className='flex justify-between text-sm'>
-                <span>Audit logs today</span>
-                <span>{stats?.auditLogsToday || 0}</span>
-              </div>
-              <div className='flex justify-between text-sm'>
-                <span>New users today</span>
-                <span>23</span>
-              </div>
-              <div className='flex justify-between text-sm'>
-                <span>Login attempts</span>
-                <span>1,847</span>
-              </div>
-              <div className='flex justify-between text-sm'>
-                <span>Failed logins</span>
-                <span>12</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-2'>
-              <Button
-                variant='outline'
-                className='w-full justify-start'
-                onClick={() => handleExport('users')}
-              >
-                <Eye className='h-4 w-4 mr-2' />
-                Export User Report
-              </Button>
-              <Button
-                variant='outline'
-                className='w-full justify-start'
-                onClick={() => handleExport('tenants')}
-              >
-                <Eye className='h-4 w-4 mr-2' />
-                Export Tenant Report
-              </Button>
-              <Button
-                variant='outline'
-                className='w-full justify-start'
-                onClick={() => handleExport('activity')}
-              >
-                <BarChart className='h-4 w-4 mr-2' />
-                Generate Insights
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      ) : (
+        /* Advanced Report Builder */
+        <AdvancedReportBuilder />
+      )}
     </div>
   )
 }

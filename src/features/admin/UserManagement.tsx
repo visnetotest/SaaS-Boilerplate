@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -221,32 +221,25 @@ export function UserManagement() {
                           ? 'Inactive'
                           : 'Suspended'}
                   </span>
+                  <svg
+                    className='h-4 w-4 opacity-50'
+                    fill='none'
+                    stroke='currentColor'
+                    viewBox='0 0 24 24'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M19 9l-7 7-7-7'
+                    />
+                  </svg>
                 </div>
                 <SelectContent>
-                  <div
-                    className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                    onClick={() => setStatusFilter('all')}
-                  >
-                    All Status
-                  </div>
-                  <div
-                    className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                    onClick={() => setStatusFilter('active')}
-                  >
-                    Active
-                  </div>
-                  <div
-                    className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                    onClick={() => setStatusFilter('inactive')}
-                  >
-                    Inactive
-                  </div>
-                  <div
-                    className='relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm hover:bg-accent hover:text-accent-foreground'
-                    onClick={() => setStatusFilter('suspended')}
-                  >
-                    Suspended
-                  </div>
+                  <SelectItem value='all'>All Status</SelectItem>
+                  <SelectItem value='active'>Active</SelectItem>
+                  <SelectItem value='inactive'>Inactive</SelectItem>
+                  <SelectItem value='suspended'>Suspended</SelectItem>
                 </SelectContent>
               </Select>
             </div>
