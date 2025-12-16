@@ -1,12 +1,14 @@
 'use client'
 
-import { Building, Edit, Plus, Search, Settings, Trash2, Users } from 'lucide-react'
+import { Building, Edit, Plus, Search, Server, Settings, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import ServiceHealthDashboard from '@/features/microservices/ServiceHealthDashboard'
 
 // Types
 interface User {
@@ -319,35 +321,51 @@ export function AdminPanel() {
         <h1 className='text-3xl font-bold'>Admin Panel</h1>
       </div>
 
-      <div className='flex gap-4 mb-6 border-b'>
-        <button
-          onClick={() => setActiveSection('users')}
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
-            activeSection === 'users'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Users className='h-4 w-4 mr-2 inline' />
-          Users
-        </button>
-        <a
-          href='/admin/plugins'
-          className={`px-4 py-2 font-medium text-sm transition-colors ${
-            activeSection === 'plugins'
-              ? 'text-primary border-b-2 border-primary'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Settings className='h-4 w-4 mr-2 inline' />
-          Plugins
-        </a>
-      </div>
+      <Tabs value={activeSection} onValueChange={setActiveSection} className='w-full'>
+        <TabsList className='grid w-full grid-cols-4'>
+          <TabsTrigger value='users' className='flex items-center gap-2'>
+            <Users className='h-4 w-4' />
+            Users
+          </TabsTrigger>
+          <TabsTrigger value='tenants' className='flex items-center gap-2'>
+            <Building className='h-4 w-4' />
+            Tenants
+          </TabsTrigger>
+          <TabsTrigger value='microservices' className='flex items-center gap-2'>
+            <Server className='h-4 w-4' />
+            Services
+          </TabsTrigger>
+          <TabsTrigger value='plugins' className='flex items-center gap-2'>
+            <Settings className='h-4 w-4' />
+            Plugins
+          </TabsTrigger>
+        </TabsList>
 
-      <div className='space-y-6'>
-        {activeSection === 'users' && <UserManagement />}
-        {activeSection === 'tenants' && <TenantManagement />}
-      </div>
+        <TabsContent value='users' className='mt-6'>
+          <UserManagement />
+        </TabsContent>
+
+        <TabsContent value='tenants' className='mt-6'>
+          <TenantManagement />
+        </TabsContent>
+
+        <TabsContent value='microservices' className='mt-6'>
+          <ServiceHealthDashboard />
+        </TabsContent>
+
+        <TabsContent value='plugins' className='mt-6'>
+          <div className='text-center py-8'>
+            <Settings className='h-12 w-12 text-muted-foreground mx-auto mb-4' />
+            <h3 className='text-lg font-semibold mb-2'>Plugin Management</h3>
+            <p className='text-muted-foreground mb-4'>
+              Manage plugins from the dedicated plugin interface.
+            </p>
+            <a href='/admin/plugins'>
+              <Button>Go to Plugin Management</Button>
+            </a>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
