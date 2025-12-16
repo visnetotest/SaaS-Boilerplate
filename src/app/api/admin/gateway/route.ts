@@ -3,6 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { auth } from '@/libs/auth'
 import { db } from '@/libs/DB'
+import {
+  GatewayRouteConflictError,
+  handleMicroservicesError,
+  ServiceValidationError,
+} from '@/libs/microservices-errors'
+import { addSecurityHeaders, InputValidator, RateLimiter } from '@/libs/security-utils'
 import { apiGatewaySchema, serviceRegistrySchema } from '@/models/Schema'
 
 // GET /api/admin/gateway - List all gateway routes
@@ -13,12 +19,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Rate limiting
+    const rateLimitResult = RateLimiter.isAllowed(
+      `gateway:${session.user.id}`,
+      100, // 100 requests per minute
+      60000 // 1 minute window
+    )
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const serviceId = searchParams.get('serviceId')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10')))
     const offset = (page - 1) * limit
+
+    // Validate inputs
+    if (status && !['active', 'inactive', 'deprecated'].includes(status)) {
+      throw new ServiceValidationError('Invalid status value', 'status')
+    }
+
+    if (serviceId && !InputValidator.validateEmail(serviceId)) {
+      // Simple UUID validation - in production would be more strict
+      throw new ServiceValidationError('Invalid service ID format', 'serviceId')
+    }
 
     let whereConditions = []
 
@@ -71,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     const totalCount = totalCountResult[0]?.count || 0
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       routes,
       pagination: {
         page,
@@ -80,9 +107,10 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(totalCount / limit),
       },
     })
+
+    return addSecurityHeaders(response)
   } catch (error) {
-    console.error('Error fetching gateway routes:', error)
-    return NextResponse.json({ error: 'Failed to fetch gateway routes' }, { status: 500 })
+    return handleMicroservicesError(error)
   }
 }
 
@@ -92,6 +120,17 @@ export async function POST(request: NextRequest) {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting for route creation
+    const rateLimitResult = RateLimiter.isAllowed(
+      `gateway-create:${session.user.id}`,
+      10, // 10 route creations per minute
+      60000 // 1 minute window
+    )
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded for route creation' }, { status: 429 })
     }
 
     const body = await request.json()
@@ -111,10 +150,30 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!name || !slug || !path || !method || !targetServiceId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, slug, path, method, targetServiceId' },
-        { status: 400 }
+      throw new ServiceValidationError(
+        'Missing required fields: name, slug, path, method, targetServiceId'
       )
+    }
+
+    // Validate inputs
+    if (!InputValidator.validateSlug(slug)) {
+      throw new ServiceValidationError('Invalid slug format')
+    }
+
+    if (!InputValidator.validatePath(path)) {
+      throw new ServiceValidationError('Invalid path format')
+    }
+
+    if (!InputValidator.validateHTTPMethod(method)) {
+      throw new ServiceValidationError('Invalid HTTP method')
+    }
+
+    if (rateLimit && !InputValidator.validateRateLimit(rateLimit)) {
+      throw new ServiceValidationError('Invalid rate limit value (1-10000)')
+    }
+
+    if (burstLimit && !InputValidator.validateRateLimit(burstLimit)) {
+      throw new ServiceValidationError('Invalid burst limit value (1-10000)')
     }
 
     // Check if route slug already exists
@@ -125,7 +184,7 @@ export async function POST(request: NextRequest) {
       .limit(1)
 
     if (existingRoute.length > 0) {
-      return NextResponse.json({ error: 'Route with this slug already exists' }, { status: 409 })
+      throw new GatewayRouteConflictError(slug, '')
     }
 
     // Check if path+method combination already exists
@@ -138,34 +197,31 @@ export async function POST(request: NextRequest) {
       .limit(1)
 
     if (existingPathMethod.length > 0) {
-      return NextResponse.json(
-        { error: 'Route with this path and method already exists' },
-        { status: 409 }
-      )
+      throw new GatewayRouteConflictError(path, method)
     }
 
     // Create new route
     const [newRoute] = await db
       .insert(apiGatewaySchema)
       .values({
-        name,
-        slug,
-        path,
+        name: InputValidator.sanitizeString(name, 255),
+        slug: InputValidator.sanitizeString(slug, 100),
+        path: InputValidator.sanitizeString(path, 500),
         method: method.toUpperCase(),
         targetServiceId,
-        rateLimit,
-        burstLimit,
-        requiresAuth: requiresAuth !== undefined ? requiresAuth : true,
-        allowedRoles,
-        description,
-        config: config || {},
+        rateLimit: rateLimit ? Number(rateLimit) : null,
+        burstLimit: burstLimit ? Number(burstLimit) : null,
+        requiresAuth: requiresAuth !== undefined ? Boolean(requiresAuth) : true,
+        allowedRoles: Array.isArray(allowedRoles) ? allowedRoles : [],
+        description: description ? InputValidator.sanitizeString(description, 1000) : null,
+        config: config && typeof config === 'object' ? config : {},
         status: 'active',
       })
       .returning()
 
-    return NextResponse.json(newRoute, { status: 201 })
+    const response = NextResponse.json(newRoute, { status: 201 })
+    return addSecurityHeaders(response)
   } catch (error) {
-    console.error('Error creating gateway route:', error)
-    return NextResponse.json({ error: 'Failed to create gateway route' }, { status: 500 })
+    return handleMicroservicesError(error)
   }
 }

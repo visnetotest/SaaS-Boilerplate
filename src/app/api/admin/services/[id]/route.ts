@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { auth } from '@/libs/auth'
 import { db } from '@/libs/DB'
+import {
+  handleMicroservicesError,
+  HealthCheckFailedError,
+  HealthCheckTimeoutError,
+  ServiceNotFoundError,
+} from '@/libs/microservices-errors'
+import { addSecurityHeaders, RateLimiter, URLValidator } from '@/libs/security-utils'
 import { apiGatewaySchema, serviceRegistrySchema } from '@/models/Schema'
 
 interface RouteParams {
@@ -15,6 +22,17 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting
+    const rateLimitResult = RateLimiter.isAllowed(
+      `service:${session.user.id}`,
+      200, // 200 requests per minute
+      60000 // 1 minute window
+    )
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
 
     const { id } = await params
@@ -55,13 +73,13 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       .limit(1)
 
     if (service.length === 0) {
-      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+      throw new ServiceNotFoundError(id)
     }
 
-    return NextResponse.json(service[0])
+    const response = NextResponse.json(service[0])
+    return addSecurityHeaders(response)
   } catch (error) {
-    console.error('Error fetching service:', error)
-    return NextResponse.json({ error: 'Failed to fetch service' }, { status: 500 })
+    return handleMicroservicesError(error)
   }
 }
 
@@ -166,6 +184,17 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Rate limiting for health checks
+    const rateLimitResult = RateLimiter.isAllowed(
+      `health:${session.user.id}`,
+      30, // 30 health checks per minute
+      60000 // 1 minute window
+    )
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded for health checks' }, { status: 429 })
+    }
+
     const { id } = await params
 
     // Get service details
@@ -176,16 +205,26 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       .limit(1)
 
     if (service.length === 0) {
-      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+      throw new ServiceNotFoundError(id)
     }
 
     const serviceData = service[0]
     if (!serviceData) {
-      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
+      throw new ServiceNotFoundError(id)
     }
-    const healthUrl = serviceData.baseUrl + (serviceData.healthEndpoint || '/health')
 
-    // Perform health check
+    // Validate and construct health check URL
+    const healthUrl = serviceData.baseUrl + (serviceData.healthEndpoint || '/health')
+    const urlValidation = URLValidator.validateServiceURL(healthUrl)
+
+    if (!urlValidation.valid) {
+      throw new HealthCheckFailedError(id, `Invalid health URL: ${urlValidation.error}`)
+    }
+
+    const safeHealthUrl = urlValidation.sanitizedUrl!
+
+    // Perform health check with timeout
+    const HEALTH_CHECK_TIMEOUT = 10000 // 10 seconds
     const startTime = Date.now()
     let status = 'active'
     let responseTime = 0
@@ -193,15 +232,17 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT)
 
-      const response = await fetch(healthUrl, {
+      const response = await fetch(safeHealthUrl, {
         method: 'GET',
         signal: controller.signal,
+        headers: {
+          'User-Agent': 'SaaS-Platform-HealthCheck/1.0',
+        },
       })
 
       clearTimeout(timeoutId)
-
       responseTime = Date.now() - startTime
 
       if (!response.ok) {
@@ -209,6 +250,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         error = `HTTP ${response.status}: ${response.statusText}`
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new HealthCheckTimeoutError(id, HEALTH_CHECK_TIMEOUT)
+      }
+
       status = 'down'
       responseTime = Date.now() - startTime
       error = err instanceof Error ? err.message : 'Unknown error'
@@ -226,7 +271,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       .where(eq(serviceRegistrySchema.id, id))
       .returning()
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       service: updatedService,
       healthCheck: {
         status,
@@ -235,8 +280,9 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         checkedAt: new Date(),
       },
     })
+
+    return addSecurityHeaders(response)
   } catch (error) {
-    console.error('Error performing health check:', error)
-    return NextResponse.json({ error: 'Failed to perform health check' }, { status: 500 })
+    return handleMicroservicesError(error)
   }
 }
