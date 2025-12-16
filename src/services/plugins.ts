@@ -18,6 +18,18 @@ export interface PluginFilters {
   limit?: number
 }
 
+export interface PaginatedPluginResponse {
+  data: Plugin[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrevious: boolean
+  }
+}
+
 export interface TenantPluginFilters {
   search?: string
   status?: 'installed' | 'activated' | 'deactivated' | 'error'
@@ -26,8 +38,8 @@ export interface TenantPluginFilters {
   tenantId?: string
 }
 
-export interface PaginatedPluginResponse {
-  data: Plugin[]
+export interface PaginatedTenantPluginResponse {
+  data: TenantPlugin[]
   pagination: {
     page: number
     limit: number
@@ -145,7 +157,7 @@ export class PluginService {
 
       const pluginIds = pluginNames.map((p) => p.id)
       if (pluginIds.length > 0) {
-        // Add individual conditions for each plugin ID
+        // Use OR conditions for multiple plugin IDs
         pluginIds.forEach((id) => conditions.push(eq(tenantPluginSchema.pluginId, id)))
       }
     }
@@ -335,7 +347,7 @@ export class PluginService {
       .where(eq(pluginSchema.slug, pluginData.slug))
       .limit(1)
 
-    if (existingPlugin && existingPlugin[0] && existingPlugin[0].id !== pluginData.id) {
+    if (existingPlugin.length > 0 && existingPlugin[0]?.id !== pluginData.id) {
       errors.push('Plugin slug must be unique')
     }
 

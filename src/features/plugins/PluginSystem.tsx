@@ -1,5 +1,7 @@
+'use client'
+
 import { AlertTriangle, Download, Plus, Power, Search, Settings, Trash2 } from 'lucide-react'
-import * as React from 'react'
+import { useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -118,10 +120,10 @@ const mockTenantPlugins: TenantPlugin[] = [
 
 // Components
 export function PluginManagement() {
-  const [plugins] = React.useState<Plugin[]>(mockPlugins)
-  const [searchTerm, setSearchTerm] = React.useState('')
-  const [categoryFilter, setCategoryFilter] = React.useState<string>('all')
-  const [statusFilter, setStatusFilter] = React.useState<string>('all')
+  const [plugins] = useState<Plugin[]>(mockPlugins)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const filteredPlugins = plugins.filter((plugin) => {
     const matchesSearch =
@@ -302,9 +304,9 @@ export function PluginManagement() {
 }
 
 export function TenantPluginManagement() {
-  const [tenantPlugins] = React.useState<TenantPlugin[]>(mockTenantPlugins)
-  const [searchTerm, setSearchTerm] = React.useState('')
-  const [statusFilter, setStatusFilter] = React.useState<string>('all')
+  const [tenantPlugins] = useState<TenantPlugin[]>(mockTenantPlugins)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const filteredPlugins = tenantPlugins.filter((tenantPlugin) => {
     // Get plugin name from mock data for display
@@ -467,7 +469,7 @@ export function TenantPluginManagement() {
 
 // Main Plugin System Component
 export function PluginSystem() {
-  const [activeSection, setActiveSection] = React.useState('marketplace')
+  const [activeSection, setActiveSection] = useState('marketplace')
 
   return (
     <div className='container mx-auto p-6 space-y-6'>
