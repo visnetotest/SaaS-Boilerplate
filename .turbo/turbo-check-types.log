@@ -2,7 +2,3 @@
 > saas-boilerplate@1.7.7 check-types
 > tsc --noEmit
 
-src/components/ToggleMenuButton.test.tsx(1,32): error TS2307: Cannot find module '@testing-library/react' or its corresponding type declarations.
-src/features/landing/CenteredFooter.test.tsx(1,32): error TS2307: Cannot find module '@testing-library/react' or its corresponding type declarations.
-src/features/landing/CenteredFooter.test.tsx(21,25): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Assertion<any>'.
-src/hooks/UseMenu.test.ts(1,33): error TS2307: Cannot find module '@testing-library/react' or its corresponding type declarations.

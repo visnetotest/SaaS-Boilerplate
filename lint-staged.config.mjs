@@ -1,5 +1,5 @@
 export default {
-  '*': ['eslint --fix --no-warn-ignored'],
+  '*': ['npx eslint --fix --no-warn-ignored'],
   '**/*.ts?(x)': () => 'tsc --noEmit',
   '**/*.{js,jsx,ts,tsx}': ['prettier --write'],
   '**/*.{json,md,yml,yaml}': ['prettier --write'],
