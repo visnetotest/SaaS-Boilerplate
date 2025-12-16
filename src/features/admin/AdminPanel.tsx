@@ -19,6 +19,7 @@ import { AnalyticsDashboard } from './AnalyticsDashboard'
 import { AuditLogs } from './AuditLogs'
 import { PluginManagement } from './PluginManagement'
 import { RBACManagement } from './RBACManagement'
+import { ReportsManager } from './ReportsManager'
 import { TenantManagement } from './TenantManagement'
 import { UserManagement } from './UserManagement'
 
@@ -58,6 +59,10 @@ export function AdminPanel() {
             <Package className='h-4 w-4' />
             Plugins
           </TabsTrigger>
+          <TabsTrigger value='reports' className='flex items-center gap-2'>
+            <BarChart3 className='h-4 w-4' />
+            Reports
+          </TabsTrigger>
           <TabsTrigger value='services' className='flex items-center gap-2'>
             <Server className='h-4 w-4' />
             Services
@@ -86,6 +91,10 @@ export function AdminPanel() {
 
         <TabsContent value='plugins' className='mt-6'>
           <PluginManagement />
+        </TabsContent>
+
+        <TabsContent value='reports' className='mt-6'>
+          <ReportsManager />
         </TabsContent>
 
         <TabsContent value='services' className='mt-6'>
