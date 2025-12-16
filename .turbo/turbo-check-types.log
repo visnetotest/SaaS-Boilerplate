@@ -2,10 +2,3 @@
 > saas-boilerplate@1.7.7 check-types
 > tsc --noEmit
 
-src/features/microservices/ServiceHealthDashboard.tsx(24,3): error TS6133: 'Settings' is declared but its value is never read.
-src/features/microservices/ServiceHealthDashboard.tsx(46,11): error TS6196: 'HealthCheck' is declared but never used.
-src/services/microservices.ts(6,3): error TS6133: 'ServiceRegistry' is declared but its value is never read.
-src/services/microservices.ts(8,3): error TS6133: 'ApiGateway' is declared but its value is never read.
-src/services/microservices.ts(10,3): error TS6133: 'PerformanceMetrics' is declared but its value is never read.
-src/services/microservices.ts(12,3): error TS6133: 'ErrorTracking' is declared but its value is never read.
-src/services/microservices.ts(16,25): error TS6133: 'asc' is declared but its value is never read.

@@ -50,4 +50,4 @@ local
 # vercel
 .vercel
 .turbo/cache/*
-ß
+.turbo/*.log
