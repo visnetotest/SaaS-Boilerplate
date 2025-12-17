@@ -32,8 +32,7 @@ export class ApiGateway {
   private async handleRequest(
     request: NextRequest,
     handler: (service: any, req: NextRequest) => Promise<any>
-  ): Promise<NextResponse>
-  ) {
+  ): Promise<NextResponse> {
     try {
       // Log incoming request
       console.log(`API Gateway: ${request.method} ${request.url}`)
@@ -129,7 +128,6 @@ export class ApiGateway {
           { error: 'Service error' },
           { status: response.status || 500 },
         )
-        }
       }
 
       const responseClone = response.clone()
@@ -155,8 +153,7 @@ export class ApiGateway {
     request: NextRequest,
     serviceSlug: string,
     handler: (service: any, req: NextRequest) => Promise<any>
-  ): Promise<NextResponse>
-  ) {
+  ): Promise<NextResponse> {
     try {
       // Check auth permissions
       const session = await auth()
@@ -269,7 +266,7 @@ export class ApiGateway {
     }
   }
 
-  private parsePluginExecutionRequest(request: NextRequest): {
+  private parsePluginExecutionRequest(request: NextRequest): { pluginId: string; action: string; data: any } {
     const url = new URL(request.url)
     const pathParts = url.pathname.split('/')
     
@@ -355,7 +352,6 @@ export class ApiGateway {
 
     return null
   }
-}
 
   // =============================================================================
   // INITIALIZATION
@@ -374,13 +370,11 @@ export class ApiGateway {
     }
 
     console.log('Health monitoring initialized for all services')
-  }
-
-  // Start periodic health checks
+    
+    // Start periodic health checks
     setInterval(() => {
       this.performHealthChecks()
     }, 60000) // Every minute
-  )
   }
 
   private async performHealthChecks(): Promise<void> {
@@ -390,16 +384,10 @@ export class ApiGateway {
       serviceRegistry.checkServiceHealth(service.id).catch((error) => {
         console.error(`Health check failed for ${service.name}:`, error)
       })
-    ))
+    )
 
     await Promise.all(healthCheckPromises)
   }
-
-  // Start periodic health checks
-    setInterval(() => {
-      this.performHealthChecks()
-    }, 60000) // Every minute
-  )
 
   // =============================================================================
   // ERROR HANDLING
@@ -412,7 +400,6 @@ export class ApiGateway {
       { status: 500 }
     )
   }
-  }
 
   private handleServiceError(error: unknown, serviceName: string): NextResponse {
     console.error(`Service Error (${serviceName}):`, error)
@@ -420,6 +407,5 @@ export class ApiGateway {
       { success: false, error: `Service error: ${error}` },
       { status: 503 }
       )
-    }
   }
 }

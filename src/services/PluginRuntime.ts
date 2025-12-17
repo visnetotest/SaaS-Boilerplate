@@ -2,8 +2,10 @@
 // PLUGIN RUNTIME SERVICE
 // =============================================================================
 
+import { PluginLoader, PluginRegistry as PluginRegistryInterface, PluginSandbox, PluginStatus } from '@/types/plugin'
+
+import { PluginRegistry } from '../libs/PluginRegistry'
 import { PluginSandboxImpl } from '../libs/PluginSandbox'
-import { PluginRegistry, PluginLoader, PluginSandbox } from '@/types/plugin'
 
 /**
  * Plugin Runtime Service
@@ -21,7 +23,46 @@ export class PluginRuntime {
   private sandbox: PluginSandbox
 
   constructor() {
-    this.registry = new PluginRegistry()
+    // Create mock API implementations for development
+    const mockUserAPI = {
+      getCurrent: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any),
+      getById: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any),
+      getByEmail: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any),
+      create: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any),
+      update: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any),
+      delete: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any),
+      list: async () => ({ id: '1', email: 'test@example.com', firstName: 'Test', lastName: 'User' } as any)
+    }
+    
+    const mockTenantAPI = {
+      getCurrent: async () => ({ id: '1', name: 'Test Tenant' } as any),
+      getById: async () => ({ id: '1', name: 'Test Tenant' } as any),
+      getBySlug: async () => ({ id: '1', name: 'Test Tenant' } as any),
+      create: async () => ({ id: '1', name: 'Test Tenant' } as any),
+      update: async () => ({ id: '1', name: 'Test Tenant' } as any),
+      delete: async () => { return true },
+      list: async () => ({ id: '1', name: 'Test Tenant' } as any)
+    } as any
+    const mockAuthAPI = {}
+    const mockDatabaseAPI = {}
+    const mockEventAPI = {}
+    const mockConfigAPI = {}
+    const mockHttpAPI = {}
+    const mockCryptoAPI = {}
+    const mockTimeAPI = {}
+    
+    // Initialize with mock implementations
+    this.registry = new PluginRegistry(
+      mockUserAPI,
+      mockTenantAPI,
+      mockAuthAPI,
+      mockDatabaseAPI,
+      mockEventAPI,
+      mockConfigAPI,
+      mockHttpAPI,
+      mockCryptoAPI,
+      mockTimeAPI
+    )
     this.sandbox = new PluginSandboxImpl()
     
     // In a real implementation, we would inject the actual API dependencies
@@ -35,7 +76,7 @@ export class PluginRuntime {
   /**
    * Register a new plugin from manifest
    */
-  async registerPlugin(manifestPath: string, tenantId?: string): Promise<string> {
+  async registerPlugin(manifestPath: string, _tenantId?: string): Promise<string> {
     try {
       // Load plugin manifest
       const manifest = await this.loader.loadFromPath(manifestPath)
@@ -283,7 +324,7 @@ export class PluginRuntime {
     pluginId: string,
     methodName: string,
     args: any[] = [],
-    context?: any
+    _context?: any
   ): Promise<any> {
     try {
       const plugin = this.registry.get(pluginId)
@@ -373,7 +414,7 @@ export class PluginRuntime {
   async cleanup(): Promise<void> {
     try {
       // Unload all active plugins
-      const plugins = this.registry.list({ status: 'active' })
+      const plugins = this.registry.list({ status: PluginStatus.ACTIVE })
       
       for (const plugin of plugins) {
         try {
