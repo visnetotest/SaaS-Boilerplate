@@ -1,4 +1,6 @@
-import { useState } from 'react'
+'use client'
+
+import { useState, useEffect } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,8 +15,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
-// Types
+// Types (matching backend ServiceRegistry)
 interface Service {
   id: string
   name: string
@@ -22,17 +31,26 @@ interface Service {
   version: string
   baseUrl: string
   healthEndpoint: string
-  docsEndpoint: string
+  docsEndpoint?: string
   description?: string
   category?: string
   tags?: string[]
-  status: 'healthy' | 'unhealthy' | 'degraded' | 'unknown'
-  uptime: number
-  responseTime: number
-  errorRate: number
-  lastChecked: string
+  status: 'active' | 'inactive' | 'error'
+  lastHealthCheck?: string
+  responseTime?: number
+  uptime?: number
+  errorRate?: number
   metadata?: Record<string, any>
+  tenantId?: string
+  author?: string
+  documentation?: string
+  repository?: string
+  license?: string
+  dependencies?: string[]
+  configuration?: Record<string, any>
 }
+
+
 
 
 
@@ -49,11 +67,11 @@ const mockServices: Service[] = [
     description: 'Handles user authentication, token validation, and session management',
     category: 'Core',
     tags: ['authentication', 'security', 'jwt'],
-    status: 'healthy',
+    status: 'active',
     uptime: 99.9,
     responseTime: 45,
     errorRate: 0.1,
-    lastChecked: new Date().toISOString(),
+    lastHealthCheck: new Date().toISOString(),
     metadata: {
       protocols: ['HTTP/1.1', 'HTTP/2'],
       dependencies: ['PostgreSQL', 'Redis'],
@@ -70,11 +88,11 @@ const mockServices: Service[] = [
     description: 'Manages user profiles, roles, permissions, and account settings',
     category: 'Core',
     tags: ['users', 'rbac', 'profiles'],
-    status: 'healthy',
+    status: 'active',
     uptime: 99.7,
     responseTime: 78,
     errorRate: 0.2,
-    lastChecked: new Date().toISOString(),
+    lastHealthCheck: new Date().toISOString(),
   },
   {
     id: 'svc-3',
@@ -87,11 +105,11 @@ const mockServices: Service[] = [
     description: 'Sends email, push, and in-app notifications to users',
     category: 'Communication',
     tags: ['notifications', 'email', 'push', 'sms'],
-    status: 'degraded',
+    status: 'error',
     uptime: 98.5,
     responseTime: 156,
     errorRate: 1.8,
-    lastChecked: new Date(Date.now() - 60000).toISOString(),
+    lastHealthCheck: new Date(Date.now() - 60000).toISOString(),
     metadata: {
       protocols: ['HTTP/2', 'WebSocket'],
       dependencies: ['Redis', 'SendGrid', 'APNS'],
@@ -108,11 +126,11 @@ const mockServices: Service[] = [
     description: 'Processes and analyzes user behavior data, generates insights and reports',
     category: 'Analytics',
     tags: ['analytics', 'metrics', 'reporting', 'data-processing'],
-    status: 'healthy',
+    status: 'active',
     uptime: 99.8,
     responseTime: 120,
     errorRate: 0.05,
-    lastChecked: new Date().toISOString(),
+    lastHealthCheck: new Date().toISOString(),
   },
   {
     id: 'svc-5',
@@ -125,11 +143,11 @@ const mockServices: Service[] = [
     description: 'Handles file uploads, storage, retrieval, and content management',
     category: 'Storage',
     tags: ['files', 'storage', 'uploads', 'media'],
-    status: 'unhealthy',
+    status: 'error',
     uptime: 85.2,
     responseTime: 450,
     errorRate: 12.5,
-    lastChecked: new Date(Date.now() - 120000).toISOString(),
+    lastHealthCheck: new Date(Date.now() - 120000).toISOString(),
     metadata: {
       protocols: ['HTTP/2', 'WebSocket'],
       dependencies: ['S3', 'CloudFront', 'Redis'],
@@ -139,18 +157,39 @@ const mockServices: Service[] = [
 ]
 
 export function ServiceRegistry() {
-  const [services, _setServices] = useState<Service[]>(mockServices)
+  const [services, setServices] = useState<Service[]>(mockServices)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false)
+
+
+  // Load services from API
+  useEffect(() => {
+    loadServices()
+  }, [])
+
+  const loadServices = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/services')
+      if (response.ok) {
+        const data = await response.json()
+        setServices(data.services || [])
+      }
+    } catch (error) {
+      console.error('Failed to load services:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      healthy: 'bg-green-100 text-green-800',
-      degraded: 'bg-yellow-100 text-yellow-800',
-      unhealthy: 'bg-red-100 text-red-800',
-      unknown: 'bg-gray-100 text-gray-800',
+      active: 'bg-green-100 text-green-800',
+      inactive: 'bg-yellow-100 text-yellow-800',
+      error: 'bg-red-100 text-red-800',
     }
     return (
       <Badge className={variants[status as keyof typeof variants] || 'bg-gray-100 text-gray-800'}>
@@ -161,22 +200,21 @@ export function ServiceRegistry() {
 
   const getStatusIcon = (status: string) => {
     const icons = {
-      healthy: '✅',
-      degraded: '⚠️',
-      unhealthy: '❌',
-      unknown: '❓',
+      active: '✅',
+      inactive: '⚠️',
+      error: '❌',
     }
     return icons[status as keyof typeof icons] || '❓'
   }
 
 
 
-  const formatResponseTime = (responseTime: number) => {
-    return `${responseTime}ms`
+  const formatResponseTime = (responseTime?: number) => {
+    return responseTime ? `${responseTime}ms` : 'N/A'
   }
 
-  const formatErrorRate = (errorRate: number) => {
-    return `${(errorRate * 100).toFixed(2)}%`
+  const formatErrorRate = (errorRate?: number) => {
+    return errorRate ? `${(errorRate * 100).toFixed(2)}%` : 'N/A'
   }
 
   const filteredServices = services.filter(service => {
@@ -196,12 +234,38 @@ export function ServiceRegistry() {
   }
 
   const handleHealthCheck = async (serviceId: string) => {
-    // In a real implementation, this would call the service health endpoint
-    console.log('Checking health for service:', serviceId)
+    try {
+      const response = await fetch(`/api/admin/services/${serviceId}/health`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Health check result:', data)
+        // Refresh services to get updated status
+        loadServices()
+      }
+    } catch (error) {
+      console.error('Health check failed:', error)
+    }
   }
 
-  const handleServiceAction = (serviceId: string, action: string) => {
-    console.log(`Performing ${action} on service:`, serviceId)
+  const handleServiceAction = async (serviceId: string, action: string) => {
+    try {
+      const response = await fetch(`/api/admin/services/${serviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: action,
+        }),
+      })
+      if (response.ok) {
+        loadServices()
+      }
+    } catch (error) {
+      console.error(`Service ${action} failed:`, error)
+    }
   }
 
   return (
@@ -215,7 +279,7 @@ export function ServiceRegistry() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button>
+          <Button onClick={() => setIsRegisterDialogOpen(true)}>
             <span className="mr-2">+</span>
             Register Service
           </Button>
@@ -315,7 +379,7 @@ export function ServiceRegistry() {
                       <div className="flex items-center gap-2">
                         <span>{getStatusIcon(service.status)}</span>
                         <span className="text-sm text-muted-foreground">
-                          {service.lastChecked}
+                          {service.lastHealthCheck}
                         </span>
                       </div>
                     </TableCell>
@@ -354,11 +418,57 @@ export function ServiceRegistry() {
         </CardContent>
       </Card>
 
+      {/* Service Registration Dialog */}
+      <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Register New Service</DialogTitle>
+            <DialogDescription>
+              Add a new microservice to the registry for discovery and management.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-3">
+                <Input placeholder="Service Name" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-3">
+                <Input placeholder="Version (e.g., 1.0.0)" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-3">
+                <Input placeholder="Base URL (e.g., https://service.example.com)" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-3">
+                <Input placeholder="Health Endpoint (e.g., /health)" />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-3">
+                <Input placeholder="Documentation URL (optional)" />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsRegisterDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button>Register Service</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Service Details Modal */}
       <div className="text-center py-4 text-sm text-muted-foreground">
         <p>Service registry provides centralized service discovery and management</p>
         <p>✅ Complete API Gateway integration for traffic routing</p>
         <p>✅ Service health monitoring and configuration management</p>
+        <p>🔄 Real-time service discovery and health monitoring</p>
       </div>
     </div>
   )

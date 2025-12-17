@@ -3,10 +3,15 @@
 // =============================================================================
 
 import { useEffect, useState } from 'react'
-
 import { Env } from '@/libs/Env'
 
-// Types
+// Type-safe interfaces
+interface AnalyticsEvent {
+  type: 'metric' | 'alert' | 'user_activity'
+  timestamp: string
+  data: unknown
+}
+
 interface RealtimeMetrics {
   timestamp: Date
   userCount: number
@@ -43,7 +48,7 @@ interface SystemAlert {
 // Service implementation
 export class RealtimeAnalyticsService {
   private ws: WebSocket | null = null
-  private subscribers: Set<(data: any) => void> = new Set()
+  private subscribers: Set<(event: AnalyticsEvent) => void> = new Set()
   private metrics: RealtimeMetrics = {
     timestamp: new Date(),
     userCount: 0,
@@ -104,17 +109,19 @@ export class RealtimeAnalyticsService {
   }
 
   // Subscription management
-  subscribe(callback: (data: any) => void): () => void {
+  subscribe(callback: (event: AnalyticsEvent) => void): () => void {
     this.subscribers.add(callback)
-    return () => this.subscribers.delete(callback)
+    return () => {
+      this.subscribers.delete(callback)
+    }
   }
 
-  private notifySubscribers(data: any): void {
-    this.subscribers.forEach((callback) => {
+  private notifySubscribers(event: AnalyticsEvent): void {
+    this.subscribers.forEach(callback => {
       try {
-        callback(data)
+        callback(event)
       } catch (error) {
-        console.error('Error notifying subscriber:', error)
+        console.error('Subscriber error:', error)
       }
     })
   }
@@ -134,188 +141,265 @@ export class RealtimeAnalyticsService {
       }
 
       this.notifySubscribers({
-        type: 'metrics',
+        type: 'metric',
+        timestamp: new Date().toISOString(),
         data: this.metrics,
       })
     }
 
-    // Collect metrics every 5 seconds
+    // Collect every 5 seconds
     this.subscribersTimeout = setInterval(collectMetrics, 5000)
   }
 
   private startUserActivityTracking(): void {
-    // Track user activities in real-time
     setInterval(() => {
       this.updateUserSessions()
     }, 10000) // Every 10 seconds
   }
 
-  private handleRealtimeEvent(event: any): void {
+  private handleRealtimeEvent(event: unknown): void {
+    if (!this.isValidAnalyticsEvent(event)) {
+      console.error('Invalid analytics event:', event)
+      return
+    }
+
     switch (event.type) {
       case 'user_activity':
         this.handleUserActivity(event.data)
         break
-      case 'system_alert':
-        this.handleSystemAlert(event.data)
+      case 'metric':
+        this.updateMetric(event.data)
         break
-      case 'performance_metric':
-        this.handlePerformanceMetric(event.data)
+      case 'alert':
+        this.addAlert(event.data)
         break
       default:
         console.log('Unknown event type:', event.type)
     }
   }
 
-  private handleUserActivity(data: any): void {
-    const { userId, endpoint, duration, status } = data
+  private isValidAnalyticsEvent(event: unknown): event is AnalyticsEvent {
+    return (
+      typeof event === 'object' &&
+      event !== null &&
+      'type' in event &&
+      typeof (event as any).type === 'string'
+    )
+  }
 
-    let session = this.userSessions.get(userId)
+  private handleUserActivity(data: unknown): void {
+    if (!this.isValidUserActivityData(data)) {
+      return
+    }
+
+    const activityData = data as {
+      userId: string
+      endpoint: string
+      duration: number
+      status: string
+    }
+
+    let session = this.userSessions.get(activityData.userId)
     if (!session) {
       session = {
-        userId,
+        userId: activityData.userId,
         startTime: new Date(),
         activities: [],
       }
-      this.userSessions.set(userId, session)
+      this.userSessions.set(activityData.userId, session)
     }
 
     session.activities.push({
-      endpoint,
+      endpoint: activityData.endpoint,
       timestamp: new Date(),
-      duration,
-      status,
+      duration: activityData.duration,
+      status: activityData.status as 'active' | 'completed' | 'error',
     })
 
-    if (status === 'completed') {
+    // Update current endpoint
+    if (activityData.status === 'active') {
+      session.currentEndpoint = activityData.endpoint
+    } else if (activityData.status === 'completed') {
       session.currentEndpoint = undefined
-    } else {
-      session.currentEndpoint = endpoint
+    }
+  }
+
+  private isValidUserActivityData(data: unknown): data is {
+    userId: string
+    endpoint: string
+    duration?: number
+    status: string
+  } {
+    return (
+      typeof data === 'object' &&
+      data !== null &&
+      'userId' in data &&
+      'endpoint' in data &&
+      typeof (data as any).userId === 'string' &&
+      typeof (data as any).endpoint === 'string' &&
+      ('status' in data && typeof (data as any).status === 'string')
+    )
+  }
+
+  private updateMetric(data: unknown): void {
+    if (!this.isValidMetricData(data)) {
+      return
     }
 
-    this.notifySubscribers({
-      type: 'user_activity',
-      data: session,
-    })
-  }
-
-  private handleSystemAlert(alertData: any): void {
-    const alert: SystemAlert = {
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      ...alertData,
+    const metricData = data as {
+      metricType: string
+      value: number
     }
 
-    this.alerts.push(alert)
-    this.notifySubscribers({
-      type: 'alert',
-      data: alert,
-    })
+    if (typeof this.metrics[metricData.metricType as keyof RealtimeMetrics] === 'number') {
+      (this.metrics as any)[metricData.metricType] = metricData.value
+    }
   }
 
-  private handlePerformanceMetric(metricData: any): void {
-    // Update performance metrics
-    this.notifySubscribers({
-      type: 'performance',
-      data: metricData,
-    })
+  private isValidMetricData(data: unknown): data is {
+    metricType: string
+    value: number
+  } {
+    return (
+      typeof data === 'object' &&
+      data !== null &&
+      'metricType' in data &&
+      'value' in data &&
+      typeof (data as any).metricType === 'string' &&
+      typeof (data as any).value === 'number'
+    )
   }
 
-  // Helper methods
+  // Helper methods for metrics calculations
   private getActiveUserCount(): number {
-    let count = 0
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-
-    this.userSessions.forEach((session) => {
-      if (session.activities.some((activity) => activity.timestamp > fiveMinutesAgo)) {
-        count++
+    
+    let activeCount = 0
+    this.userSessions.forEach(session => {
+      const recentActivities = session.activities.filter(
+        activity => activity.timestamp > fiveMinutesAgo
+      )
+      if (recentActivities.length > 0) {
+        activeCount++
       }
     })
-
-    return count
+    
+    return activeCount
   }
 
   private getApiCallCount(): number {
     let count = 0
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000)
-
-    this.userSessions.forEach((session) => {
-      count += session.activities.filter((activity) => activity.timestamp > oneMinuteAgo).length
+    
+    this.userSessions.forEach(session => {
+      count += session.activities.filter(
+        activity => activity.timestamp > oneMinuteAgo
+      ).length
     })
-
+    
     return count
   }
 
   private getErrorRate(): number {
-    let total = 0
-    let errors = 0
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-
-    this.userSessions.forEach((session) => {
-      session.activities.forEach((activity) => {
-        if (activity.timestamp > fiveMinutesAgo) {
-          total++
-          if (activity.status === 'error') {
-            errors++
-          }
+    let totalCalls = 0
+    let errorCalls = 0
+    
+    this.userSessions.forEach(session => {
+      session.activities.forEach(activity => {
+        totalCalls++
+        if (activity.status === 'error') {
+          errorCalls++
         }
       })
     })
-
-    return total > 0 ? (errors / total) * 100 : 0
+    
+    return totalCalls > 0 ? (errorCalls / totalCalls) * 100 : 0
   }
 
   private getAverageResponseTime(): number {
-    let totalTime = 0
+    let totalDuration = 0
     let count = 0
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
-
-    this.userSessions.forEach((session) => {
-      session.activities.forEach((activity) => {
-        if (activity.timestamp > fiveMinutesAgo && activity.duration) {
-          totalTime += activity.duration
+    
+    this.userSessions.forEach(session => {
+      session.activities.forEach(activity => {
+        if (activity.duration) {
+          totalDuration += activity.duration
           count++
         }
       })
     })
-
-    return count > 0 ? totalTime / count : 0
+    
+    return count > 0 ? totalDuration / count : 0
   }
 
   private getCpuUsage(): number {
-    // Simulate CPU usage - in production, this would come from actual monitoring
+    // Simulate CPU usage - in production, get from system monitoring
     return Math.random() * 100
   }
 
   private getMemoryUsage(): number {
-    // Simulate memory usage - in production, this would come from actual monitoring
+    // Simulate memory usage - in production, get from system monitoring
     return Math.random() * 100
   }
 
   private updateUserSessions(): void {
-    // Clean up old sessions (older than 30 minutes)
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
-
-    this.userSessions.forEach((session, userId) => {
+    
+    for (const [userId, session] of this.userSessions.entries()) {
       const recentActivities = session.activities.filter(
-        (activity) => activity.timestamp > thirtyMinutesAgo
+        activity => activity.timestamp > thirtyMinutesAgo
       )
-
+      
       if (recentActivities.length === 0) {
         this.userSessions.delete(userId)
-      } else {
-        session.activities = recentActivities
       }
-    })
+    }
   }
 
   private startPollingMode(): void {
-    console.log('📡 Starting polling mode for analytics')
-    setInterval(() => {
-      this.startMetricsCollection()
-    }, 5000)
+    console.log('📡 Using polling mode for analytics')
+    
+    const pollMetrics = () => {
+      this.metrics = {
+        timestamp: new Date(),
+        userCount: this.userSessions.size,
+        activeUsers: this.getActiveUserCount(),
+        apiCalls: this.getApiCallCount(),
+        errorRate: this.getErrorRate(),
+        avgResponseTime: this.getAverageResponseTime(),
+        cpuUsage: this.getCpuUsage(),
+        memoryUsage: this.getMemoryUsage(),
+      }
+
+      this.notifySubscribers({
+        type: 'metric',
+        timestamp: new Date().toISOString(),
+        data: this.metrics,
+      })
+    }
+
+    // Poll every 5 seconds as fallback
+    this.subscribersTimeout = setInterval(pollMetrics, 5000)
   }
 
-  // Public API
+  // Alert management
+  addAlert(alert: Omit<SystemAlert, 'id' | 'timestamp'>): void {
+    const systemAlert: SystemAlert = {
+      id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date(),
+      ...alert,
+    }
+
+    this.alerts.push(systemAlert)
+    
+    this.notifySubscribers({
+      type: 'alert',
+      timestamp: new Date().toISOString(),
+      data: systemAlert,
+    })
+  }
+
+  // Public API methods
   getMetrics(): RealtimeMetrics {
     return { ...this.metrics }
   }
@@ -324,50 +408,14 @@ export class RealtimeAnalyticsService {
     return [...this.alerts]
   }
 
-  getActiveUsers(): UserSession[] {
-    return Array.from(this.userSessions.values())
-  }
-
-  addAlert(alert: Omit<SystemAlert, 'id' | 'timestamp'>): void {
-    const systemAlert: SystemAlert = {
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      ...alert,
-    }
-
-    this.alerts.push(systemAlert)
-    this.notifySubscribers({
-      type: 'alert',
-      data: systemAlert,
-    })
-  }
-
-  acknowledgeAlert(alertId: string): void {
-    const alert = this.alerts.find((a) => a.id === alertId)
-    if (alert) {
-      alert.acknowledged = true
-      this.notifySubscribers({
-        type: 'alert_updated',
-        data: alert,
-      })
-    }
-  }
-
-  resolveAlert(alertId: string): void {
-    const alert = this.alerts.find((a) => a.id === alertId)
-    if (alert) {
-      alert.resolved = true
-      this.notifySubscribers({
-        type: 'alert_updated',
-        data: alert,
-      })
-    }
+  getActiveUsers(): number {
+    return this.getActiveUserCount()
   }
 
   // Cleanup
   disconnect(): void {
     if (this.subscribersTimeout) {
-      clearTimeout(this.subscribersTimeout)
+      clearInterval(this.subscribersTimeout)
       this.subscribersTimeout = null
     }
 
@@ -375,11 +423,12 @@ export class RealtimeAnalyticsService {
       this.ws.close()
       this.ws = null
     }
-
+    
     this.subscribers.clear()
     console.log('🔌 Realtime analytics disconnected')
   }
 
+  // Health check
   async healthCheck(): Promise<{
     status: 'healthy' | 'degraded' | 'unhealthy'
     details: any
@@ -392,18 +441,21 @@ export class RealtimeAnalyticsService {
             connection: 'websocket',
             subscribers: this.subscribers.size,
             userSessions: this.userSessions.size,
-            alerts: this.alerts.length,
           },
         }
-      } else {
+      } else if (this.subscribersTimeout) {
         return {
           status: 'degraded',
           details: {
             connection: 'polling',
             subscribers: this.subscribers.size,
             userSessions: this.userSessions.size,
-            alerts: this.alerts.length,
           },
+        }
+      } else {
+        return {
+          status: 'unhealthy',
+          details: 'No active connection or polling',
         }
       }
     } catch (error) {
@@ -415,9 +467,6 @@ export class RealtimeAnalyticsService {
   }
 }
 
-// Singleton instance
-export const realtimeAnalytics = new RealtimeAnalyticsService()
-
 // React hook for consuming real-time analytics
 export function useRealtimeAnalytics() {
   const [metrics, setMetrics] = useState<RealtimeMetrics | null>(null)
@@ -425,41 +474,25 @@ export function useRealtimeAnalytics() {
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null
-
-    const initializeConnection = async () => {
-      try {
-        await realtimeAnalytics.connect()
-        setConnected(true)
-
-        // Subscribe to metrics updates
-        unsubscribe = realtimeAnalytics.subscribe((data) => {
-          switch (data.type) {
-            case 'metrics':
-              setMetrics(data.data)
-              break
-            case 'alert':
-              setAlerts((prev) => [data.data, ...prev.slice(0, 9)]) // Keep last 10 alerts
-              break
-            case 'alert_updated':
-              setAlerts((prev) =>
-                prev.map((alert) => (alert.id === data.data.id ? data.data : alert))
-              )
-              break
-          }
-        })
-      } catch (error) {
-        console.error('Failed to initialize real-time analytics:', error)
-        setConnected(false)
+    const analyticsService = new RealtimeAnalyticsService()
+    
+    // Connect to analytics service
+    analyticsService.connect()
+    setConnected(true)
+    
+    // Subscribe to events
+    const unsubscribeMetrics = analyticsService.subscribe((event) => {
+      if (event.type === 'metric') {
+        setMetrics(event.data as RealtimeMetrics)
+      } else if (event.type === 'alert') {
+        setAlerts(prev => [event.data as SystemAlert, ...prev.slice(0, 9)]) // Keep last 10 alerts
       }
-    }
-
-    initializeConnection()
+    })
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe()
-      }
+      unsubscribeMetrics()
+      analyticsService.disconnect()
+      setConnected(false)
     }
   }, [])
 
@@ -467,8 +500,16 @@ export function useRealtimeAnalytics() {
     metrics,
     alerts,
     connected,
-    acknowledgeAlert: realtimeAnalytics.acknowledgeAlert.bind(realtimeAnalytics),
-    resolveAlert: realtimeAnalytics.resolveAlert.bind(realtimeAnalytics),
-    addAlert: realtimeAnalytics.addAlert.bind(realtimeAnalytics),
+    acknowledgeAlert: analyticsService.addAlert.bind(analyticsService),
+    resolveAlert: (alertId: string) => {
+      const alert = alerts.find(a => a.id === alertId)
+      if (alert && !alert.resolved) {
+        analyticsService.addAlert({ id: alertId, resolved: true })
+        setAlerts(prev => prev.map(a => 
+          a.id === alertId ? { ...a, resolved: true } : a
+        ))
+      }
+    },
+    addAlert: analyticsService.addAlert.bind(analyticsService),
   }
 }

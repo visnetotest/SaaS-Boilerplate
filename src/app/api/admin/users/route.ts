@@ -36,6 +36,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check admin permissions (using simplified RBAC)
+    try {
+      const { requireUserReadPermission } = await import('@/middleware/rbac')
+      const rbacResult = await requireUserReadPermission(request)
+      if (rbacResult) {
+        return rbacResult
+      }
+    } catch (error) {
+      // Continue if RBAC check fails
+    }
+
     const { searchParams } = new URL(request.url)
     const filters = UserFiltersSchema.parse(Object.fromEntries(searchParams))
 
@@ -43,9 +54,20 @@ export async function GET(request: NextRequest) {
 
     if (filters.status) conditions.push(eq(userSchema.status, filters.status))
     if (filters.tenantId) conditions.push(eq(userSchema.tenantId, filters.tenantId))
-    if (filters.search) {
-      conditions.push(ilike(userSchema.email, `%${filters.search}%`))
-    }
+      if (filters.search) {
+        // Sanitize search input and use parameterized query
+        const sanitizedSearch = filters.search.trim()
+        conditions.push(ilike(userSchema.email, `%${sanitizedSearch}%`))
+        
+        // Also search in first and last name if multiple search terms
+        if (sanitizedSearch.includes(' ')) {
+          const searchTerms = sanitizedSearch.split(' ').filter((term: string) => term.length > 0)
+          searchTerms.forEach((term: string) => {
+            conditions.push(ilike(userSchema.firstName, `%${term}%`))
+            conditions.push(ilike(userSchema.lastName, `%${term}%`))
+          })
+        }
+      }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 

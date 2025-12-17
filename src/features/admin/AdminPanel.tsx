@@ -1,27 +1,18 @@
 'use client'
 
-import {
-  Activity,
-  BarChart3,
-  Building,
-  Package,
-  Server,
-  Settings,
-  Shield,
-  Users,
-} from 'lucide-react'
 import { useState } from 'react'
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import ServiceHealthDashboard from '@/features/microservices/ServiceHealthDashboard'
+import { Activity, BarChart3, Building, Package, Server, Settings, Shield, Users } from 'lucide-react'
 
-import { AnalyticsDashboard } from './AnalyticsDashboard'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+import { EnhancedAnalyticsDashboard } from '@/components/admin/EnhancedAnalyticsDashboard'
+import { ServiceRegistry } from './ServiceRegistry'
+import { RBACManagementDashboard } from '@/components/admin/RBACManagementDashboard'
 import { AuditLogs } from './AuditLogs'
 import { PluginManagement } from './PluginManagement'
-import { RBACManagement } from './RBACManagement'
-import { ReportsManager } from './ReportsManager'
-import { TenantManagement } from './TenantManagement'
-import { UserManagement } from './UserManagement'
+import { UserManagementDashboard } from '@/components/admin/UserManagementDashboard'
+import { TenantManagementDashboard } from '@/components/admin/TenantManagementDashboard'
 
 export function AdminPanel() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -59,10 +50,6 @@ export function AdminPanel() {
             <Package className='h-4 w-4' />
             Plugins
           </TabsTrigger>
-          <TabsTrigger value='reports' className='flex items-center gap-2'>
-            <BarChart3 className='h-4 w-4' />
-            Reports
-          </TabsTrigger>
           <TabsTrigger value='services' className='flex items-center gap-2'>
             <Server className='h-4 w-4' />
             Services
@@ -70,35 +57,31 @@ export function AdminPanel() {
         </TabsList>
 
         <TabsContent value='overview' className='mt-6'>
-          <AnalyticsDashboard />
+          <EnhancedAnalyticsDashboard />
         </TabsContent>
-
+        
         <TabsContent value='users' className='mt-6'>
-          <UserManagement />
+          <UserManagementDashboard />
         </TabsContent>
-
+        
         <TabsContent value='tenants' className='mt-6'>
-          <TenantManagement />
+          <TenantManagementDashboard />
         </TabsContent>
-
+        
         <TabsContent value='rbac' className='mt-6'>
-          <RBACManagement />
+          <RBACManagementDashboard />
         </TabsContent>
-
+        
         <TabsContent value='audit' className='mt-6'>
           <AuditLogs />
         </TabsContent>
-
+        
         <TabsContent value='plugins' className='mt-6'>
           <PluginManagement />
         </TabsContent>
-
-        <TabsContent value='reports' className='mt-6'>
-          <ReportsManager />
-        </TabsContent>
-
+        
         <TabsContent value='services' className='mt-6'>
-          <ServiceHealthDashboard />
+          <ServiceRegistry />
         </TabsContent>
       </Tabs>
     </div>
