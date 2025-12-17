@@ -62,7 +62,7 @@ export class EnhancedPluginLoader {
 
         // Return plugin module with expected interface
         return {
-          initialize: pluginExports.initialize || async function(context: any) {
+          initialize: pluginExports.initialize || async (context: any) => {
             context.logger.info(`Plugin ${pluginName} initialized (no custom initialize)`)
           },
           cleanup: pluginExports.cleanup || async function() {
