@@ -1,0 +1,155 @@
+# =============================================================================
+# CONFIGMAP FOR APPLICATION ENVIRONMENT VARIABLES
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: saas-app-config
+  namespace: saas-platform
+  labels:
+    app: saas-platform
+    component: configmap
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "saas_boilerplate"
+  SERVICE_REGISTRY_URL: "http://service-registry-service:3001"
+  API_GATEWAY_URL: "http://api-gateway-service:3002"
+  AUTH_SERVICE_URL: "http://auth-service:3003"
+  USER_SERVICE_URL: "http://user-service:3004"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:3005"
+
+---
+
+# =============================================================================
+# CONFIGMAP FOR SERVICE REGISTRY
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-registry-config
+  namespace: saas-platform
+  labels:
+    app: saas-platform
+    component: service-registry
+data:
+  NODE_ENV: "production"
+  PORT: "3001"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "saas_boilerplate"
+  HEALTH_CHECK_INTERVAL: "30"
+  MAX_RETRIES: "3"
+  LOG_LEVEL: "info"
+
+---
+
+# =============================================================================
+# CONFIGMAP FOR API GATEWAY
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: saas-platform
+  labels:
+    app: saas-platform
+    component: api-gateway
+data:
+  NODE_ENV: "production"
+  PORT: "3002"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  SERVICE_REGISTRY_URL: "http://service-registry-service:3001"
+  RATE_LIMIT_WINDOW: "15"
+  RATE_LIMIT_MAX: "100"
+  TIMEOUT_MS: "30000"
+  LOG_LEVEL: "info"
+
+---
+
+# =============================================================================
+# CONFIGMAP FOR AUTH SERVICE
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: saas-platform
+  labels:
+    app: saas-platform
+    component: auth-service
+data:
+  NODE_ENV: "production"
+  PORT: "3003"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "saas_boilerplate"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  JWT_EXPIRES_IN: "24h"
+  REFRESH_TOKEN_EXPIRES_IN: "7d"
+  BCRYPT_ROUNDS: "12"
+  LOG_LEVEL: "info"
+
+---
+
+# =============================================================================
+# CONFIGMAP FOR USER SERVICE
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: saas-platform
+  labels:
+    app: saas-platform
+    component: user-service
+data:
+  NODE_ENV: "production"
+  PORT: "3004"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "saas_boilerplate"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  AUTH_SERVICE_URL: "http://auth-service:3003"
+  LOG_LEVEL: "info"
+
+---
+
+# =============================================================================
+# CONFIGMAP FOR NOTIFICATION SERVICE
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: saas-platform
+  labels:
+    app: saas-platform
+    component: notification-service
+data:
+  NODE_ENV: "production"
+  PORT: "3005"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "saas_boilerplate"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  SMTP_HOST: "smtp.gmail.com"
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  LOG_LEVEL: "info"

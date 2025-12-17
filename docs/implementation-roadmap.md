@@ -144,6 +144,7 @@ interface AdminPanelCore {
 
 #### Week 19-22: Development Tools & SDK 🔴 NOT STARTED
 
+
 - [ ] Plugin CLI tools
 - [ ] Development SDK
 - [ ] Testing framework
