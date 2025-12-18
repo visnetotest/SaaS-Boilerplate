@@ -1,0 +1,135 @@
+# =============================================================================
+# PROMETHEUS MONITORING CONFIGURATION
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # =============================================================================
+  # PROMETHEUS SELF-MONITORING
+  # =============================================================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # =============================================================================
+  # MICROSERVICES MONITORING
+  # =============================================================================
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:3003']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'plugin-runtime'
+    static_configs:
+      - targets: ['plugin-runtime:3004']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'service-mesh'
+    static_configs:
+      - targets: ['service-mesh:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # =============================================================================
+  # INFRASTRUCTURE MONITORING
+  # =============================================================================
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  - job_name: 'consul'
+    static_configs:
+      - targets: ['consul:8500']
+    metrics_path: '/v1/agent/metrics'
+    params:
+      format: ['prometheus']
+    scrape_interval: 30s
+
+  # =============================================================================
+  # NODE EXPORTER FOR SYSTEM METRICS
+  # =============================================================================
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # =============================================================================
+  # SERVICE MESH METRICS (ISTIO)
+  # =============================================================================
+  - job_name: 'istio-mesh'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - istio-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: istio-telemetry;http-monitoring
+
+  - job_name: 'istio-envoy'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - istio-system
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: istio-proxy;http-monitoring
+
+  # =============================================================================
+  # APPLICATION-SPECIFIC METRICS
+  # =============================================================================
+  - job_name: 'custom-metrics'
+    static_configs:
+      - targets: ['api-gateway:3000']
+    metrics_path: '/api/v1/metrics/custom'
+    scrape_interval: 15s
+
+  # =============================================================================
+  # JAEGER TRACING METRICS
+  # =============================================================================
+  - job_name: 'jaeger'
+    static_configs:
+      - targets: ['jaeger:14269']
+    metrics_path: '/metrics'
+    scrape_interval: 30s

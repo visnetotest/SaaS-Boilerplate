@@ -4,8 +4,8 @@ import { auth } from '@/libs/auth'
 
 // GET /api/admin/plugins/runtime/[pluginId] - Get plugin runtime status
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { pluginId: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ pluginId: string }> }
 ) {
   try {
     const session = await auth()
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const pluginId = params.pluginId
+    const { pluginId } = await params
 
     // TODO: Implement plugin runtime status check
     return NextResponse.json({

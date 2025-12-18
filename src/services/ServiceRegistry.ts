@@ -1,353 +1,259 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/libs/auth'
+import { and, count, desc, eq } from 'drizzle-orm'
 import { db } from '@/libs/DB'
-import { serviceRegistry } from '@/services/ServiceRegistry'
+import type { ServiceRegistry, NewServiceRegistry } from '@/models/Schema'
+import { serviceRegistrySchema } from '@/models/Schema'
+import {
+  ServiceAlreadyExistsError,
+  ServiceNotFoundError,
+  ServiceValidationError,
+} from '@/libs/microservices-errors'
+import {
+  InputValidator,
+  URLValidator,
+} from '@/libs/security-utils'
 
-// Validation schemas
-const CreateServiceSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(100),
-  version: z.string().min(1),
-  description: z.string().optional(),
-  author: z.string().optional(),
-  repository: z.string().url().optional(),
-  homepage: z.string().url().optional(),
-  category: z.string(),
-  tags: z.array(z.string()).optional(),
-  baseUrl: z.string().url(),
-  healthEndpoint: z.string().url().optional(),
-  docsEndpoint: z.string().url().optional(),
-  isInternal: z.boolean().optional().default(false),
-})
-
-const UpdateServiceSchema = CreateServiceSchema.partial().omit({
-  name: true,
-  slug: true,
-  version: true,
-  baseUrl: true,
-})
-
-const ServiceActionSchema = z.enum(['activate', 'deactivate', 'restart', 'update-config'])
-
-// GET /api/admin/services - List all services
-export async function GET(request: NextRequest) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const filters = {
-      status: searchParams.get('status'),
-      category: searchParams.get('category'),
-      author: searchParams.get('author'),
-      isInternal: searchParams.get('isInternal'),
-    }
-
-    const services = await serviceRegistry.getServices(filters)
-
-    return NextResponse.json({
-      success: true,
-      data: services,
-      type: 'service-list',
-    })
-
-  } catch (error) {
-    console.error('Failed to list services:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to list services' },
-      { status: 500 }
-    )
-  }
-  }
-}
-
-// POST /api/admin/services - Register new service
-export async function POST(request: NextRequest) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const validatedData = CreateServiceSchema.parse(body)
-
-    // Check admin permissions
-    // TODO: Implement proper RBAC check
-
-    const serviceId = await serviceRegistry.register(validatedData)
-
-    return NextResponse.json({
-      success: true,
-      data: { serviceId },
-      message: 'Service registered successfully'
-    })
-
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', details: error.errors },
-        { status: 400 }
+/**
+ * Service Registry class for managing microservices
+ */
+export class ServiceRegistryImpl {
+  /**
+   * Register a new service
+   */
+  async register(data: NewServiceRegistry): Promise<string> {
+    // Validate required fields
+    if (!data.name || !data.slug || !data.version || !data.baseUrl || !data.healthEndpoint) {
+      throw new ServiceValidationError(
+        'Missing required fields: name, slug, version, baseUrl, healthEndpoint'
       )
     }
 
-    console.error('Failed to register service:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to register service' },
-      { status: 500 }
-    )
-  }
-  }
-}
-
-// PUT /api/admin/services/[serviceId] - Update service
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
-) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Validate inputs
+    if (!InputValidator.validateSlug(data.slug)) {
+      throw new ServiceValidationError('Invalid slug format')
     }
 
-    const body = await request.json()
-    const validatedData = UpdateServiceSchema.parse(body)
-
-    // Check admin permissions
-    // TODO: Implement proper RBAC check
-
-    const serviceId = params.serviceId
-    await serviceRegistry.updateService(serviceId, validatedData)
-
-    return NextResponse.json({
-      success: true,
-      message: `Service ${serviceId} updated successfully`
-    })
-
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      )
+    if (!InputValidator.validateVersion(data.version)) {
+      throw new ServiceValidationError('Invalid version format (use semantic versioning)')
     }
 
-    console.error('Failed to update service:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to update service' },
-      { status: 500 }
-    )
-    }
-  }
-}
-
-// DELETE /api/admin/services/[serviceId] - Unregister service
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
-) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (data.category && !InputValidator.validateCategory(data.category)) {
+      throw new ServiceValidationError('Invalid category')
     }
 
-    const serviceId = params.serviceId
-
-    // Check admin permissions
-    // TODO: Implement proper RBAC check
-
-    await serviceRegistry.unregister(serviceId)
-
-    return NextResponse.json({
-      success: true,
-      message: `Service ${serviceId} unregistered successfully`
-    })
-
-  } catch (error) {
-    console.error('Failed to unregister service:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to unregister service' },
-      { status: 500 }
-    )
-    }
-  }
-}
-
-// GET /api/admin/services/[serviceId]/health - Get service health status
-export async function GET_HEALTH(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
-) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Validate URLs
+    const baseUrlValidation = URLValidator.validateServiceURL(data.baseUrl)
+    if (!baseUrlValidation.valid) {
+      throw new ServiceValidationError(`Invalid base URL: ${baseUrlValidation.error}`)
     }
 
-    const serviceId = params.serviceId
+    // Check if service slug already exists
+    const existingService = await db
+      .select()
+      .from(serviceRegistrySchema)
+      .where(eq(serviceRegistrySchema.slug, data.slug))
+      .limit(1)
 
-    // Check admin permissions
-    // TODO: Implement proper RBAC check
-
-    const healthStatus = await serviceRegistry.getHealthStatus(serviceId)
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        serviceId,
-        health: healthStatus,
-        timestamp: new Date().toISOString(),
-      }
-    })
-
-  } catch (error) {
-    console.error('Failed to get service health:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to get service health' },
-      { status: 500 }
-    )
-    }
-  }
-}
-
-// GET /api/admin/services/[serviceId]/config - Get service configuration
-export async function GET_CONFIG(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
-) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (existingService.length > 0) {
+      throw new ServiceAlreadyExistsError(data.slug)
     }
 
-    const serviceId = params.serviceId
-
-    // Check admin permissions
-    // TODO: Implement proper RBAC check
-
-    const service = serviceRegistry.getService(serviceId)
-    if (!service) {
-      return NextResponse.json(
-        { success: false, error: 'Service not found' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        serviceId: service.id,
-        config: service.config,
-        secrets: service.secrets,
-      },
+    // Create new service
+    const [newService] = await db
+      .insert(serviceRegistrySchema)
+      .values({
+        name: InputValidator.sanitizeString(data.name, 255),
+        slug: InputValidator.sanitizeString(data.slug, 100),
+        version: InputValidator.sanitizeString(data.version, 50),
+        baseUrl: baseUrlValidation.sanitizedUrl!,
+        healthEndpoint: InputValidator.sanitizeString(data.healthEndpoint, 500),
+        docsEndpoint: data.docsEndpoint ? InputValidator.sanitizeString(data.docsEndpoint, 500) : null,
+        description: data.description ? InputValidator.sanitizeString(data.description, 1000) : null,
+        category: data.category ? InputValidator.sanitizeString(data.category, 100) : null,
+        tags: Array.isArray(data.tags) ? data.tags.map((tag) => InputValidator.sanitizeString(tag, 50)) : [],
+        isInternal: Boolean(data.isInternal),
+        config: data.config && typeof data.config === 'object' ? data.config : {},
+        secrets: data.secrets && typeof data.secrets === 'object' ? data.secrets : {},
+        status: 'inactive',
       })
+      .returning()
 
-    } catch (error) {
-    console.error('Failed to get service config:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to get service config' },
-      { status: 500 }
-    )
-    }
+    return newService.id
   }
 
-// PUT /api/admin/services/[serviceId]/config - Update service configuration
-export async function PUT_CONFIG(
-  request: NextRequest,
-  { params }: { params: { serviceId: string } }
-) {
-  try {
-    const session = await auth()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  /**
+   * Get all services with optional filtering
+   */
+  async getServices(filters: {
+    status?: string
+    category?: string
+    author?: string
+    isInternal?: string
+  }): Promise<ServiceRegistry[]> {
+    let whereConditions = []
+
+    if (filters.status) {
+      whereConditions.push(eq(serviceRegistrySchema.status, filters.status))
     }
 
-    const body = await request.json()
-    const validatedData = UpdateServiceSchema.parse(body)
+    if (filters.category) {
+      whereConditions.push(eq(serviceRegistrySchema.category, filters.category))
+    }
 
-    const serviceId = params.serviceId
+    return await db
+      .select()
+      .from(serviceRegistrySchema)
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(serviceRegistrySchema.createdAt))
+  }
 
-    // Check admin permissions
-    // TODO: Implement proper RBAC check
+  /**
+   * Get a single service by ID
+   */
+  async getService(id: string): Promise<ServiceRegistry | null> {
+    const services = await db
+      .select()
+      .from(serviceRegistrySchema)
+      .where(eq(serviceRegistrySchema.id, id))
+      .limit(1)
 
-    const service = serviceRegistry.getService(serviceId)
+    return services[0] || null
+  }
+
+  /**
+   * Update a service
+   */
+  async updateService(id: string, data: Partial<NewServiceRegistry>): Promise<void> {
+    const existingService = await this.getService(id)
+    if (!existingService) {
+      throw new ServiceNotFoundError(id)
+    }
+
+    // Prepare update data
+    const updateData: any = {}
+
+    if (data.description !== undefined) {
+      updateData.description = data.description ? InputValidator.sanitizeString(data.description, 1000) : null
+    }
+
+    if (data.category !== undefined) {
+      updateData.category = data.category ? InputValidator.sanitizeString(data.category, 100) : null
+    }
+
+    if (data.tags !== undefined) {
+      updateData.tags = Array.isArray(data.tags) ? data.tags.map((tag) => InputValidator.sanitizeString(tag, 50)) : []
+    }
+
+    if (data.config !== undefined) {
+      updateData.config = data.config && typeof data.config === 'object' ? data.config : {}
+    }
+
+    if (data.secrets !== undefined) {
+      updateData.secrets = data.secrets && typeof data.secrets === 'object' ? data.secrets : {}
+    }
+
+    await db
+      .update(serviceRegistrySchema)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(serviceRegistrySchema.id, id))
+  }
+
+  /**
+   * Unregister (delete) a service
+   */
+  async unregister(id: string): Promise<void> {
+    const existingService = await this.getService(id)
+    if (!existingService) {
+      throw new ServiceNotFoundError(id)
+    }
+
+    await db
+      .delete(serviceRegistrySchema)
+      .where(eq(serviceRegistrySchema.id, id))
+  }
+
+  /**
+   * Get service health status
+   */
+  async getHealthStatus(id: string): Promise<{
+    status: string
+    lastHealthCheck: Date | null
+    responseTime: number | null
+    uptime: number | null
+  }> {
+    const service = await this.getService(id)
     if (!service) {
-      return NextResponse.json(
-        { success: false, error: 'Service not found' },
-        { status: 404 }
-      )
+      throw new ServiceNotFoundError(id)
     }
 
-    // Validate configuration update
-    this.validateServiceConfig(validatedData.config)
-
-    // Update service configuration
-    await serviceRegistry.updateConfig(serviceId, validatedData.config)
-
-    return NextResponse.json({
-      success: true,
-      message: `Service ${serviceId} configuration updated`
-    })
-
-    } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      )
-    }
-
-    console.error('Failed to update service config:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to update service config' },
-      { status: 500 }
-    )
+    return {
+      status: service.status,
+      lastHealthCheck: service.lastHealthCheck,
+      responseTime: service.responseTime,
+      uptime: service.uptime,
     }
   }
 
-// =============================================================================
-// PRIVATE HELPER METHODS
-// =============================================================================
+  /**
+   * Update service configuration
+   */
+  async updateConfig(id: string, config: any): Promise<void> {
+    this.validateServiceConfig(config)
 
-private validateServiceConfig(config: any): void {
-  // Basic validation rules for service configuration
-  if (!config || typeof config !== 'object') {
-    throw new Error('Configuration must be an object')
+    await db
+      .update(serviceRegistrySchema)
+      .set({ 
+        config: config,
+        updatedAt: new Date()
+      })
+      .where(eq(serviceRegistrySchema.id, id))
   }
 
-  // Check for sensitive data in public config
-  const sensitiveKeys = ['password', 'secret', 'key', 'private']
-  const hasSensitiveData = Object.keys(config).some(key => 
-    sensitiveKeys.some(sensitiveKey => config[key] && config[key] !== ''))
-  
-  if (hasSensitiveData) {
-    throw new Error('Configuration contains sensitive data')
-  }
+  /**
+   * Validate service configuration
+   */
+  private validateServiceConfig(config: any): void {
+    if (!config || typeof config !== 'object') {
+      throw new Error('Configuration must be an object')
+    }
 
-  // Validate URL format
-  if (config.baseUrl && !this.isValidUrl(config.baseUrl)) {
-    throw new Error('Invalid baseUrl format')
-  }
+    // Check for sensitive data in public config
+    const sensitiveKeys = ['password', 'secret', 'key', 'private']
+    const hasSensitiveData = Object.keys(config).some(key => 
+      sensitiveKeys.some(sensitiveKey => config[key] && config[key] !== ''))
+    
+    if (hasSensitiveData) {
+      throw new Error('Configuration contains sensitive data')
+    }
 
-  // Validate arrays
-  const arrayFields = ['tags']
-  arrayFields.forEach(field => {
-    if (Array.isArray(config[field]) {
-      const arrayValue = config[field]
-      if (!arrayValue.every(item => typeof item === 'string')) {
-        throw new Error(`Field ${field} must be an array of strings`)
+    // Validate URL format
+    if (config.baseUrl && !this.isValidUrl(config.baseUrl)) {
+      throw new Error('Invalid baseUrl format')
+    }
+
+    // Validate arrays
+    const arrayFields = ['tags']
+    arrayFields.forEach(field => {
+      if (Array.isArray(config[field])) {
+        const arrayValue = config[field]
+        if (!arrayValue.every(item => typeof item === 'string')) {
+          throw new Error(`Field ${field} must be an array of strings`)
+        }
       }
     })
   }
+
+  /**
+   * Validate URL format
+   */
+  private isValidUrl(url: string): boolean {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
-// =============================================================================
-// EXPORT SINGLETON
-// =============================================================================
-
+// Export singleton instance
 export const serviceRegistry = new ServiceRegistryImpl()

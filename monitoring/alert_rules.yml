@@ -1,0 +1,340 @@
+# =============================================================================
+# ALERTING RULES FOR SaaS PLATFORM
+# =============================================================================
+
+groups:
+  - name: saas-platform-alerts
+    rules:
+      # =============================================================================
+      # SERVICE AVAILABILITY ALERTS
+      # =============================================================================
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute."
+          runbook_url: "https://runbooks.example.com/service-down"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.job }}"
+
+      - alert: VeryHighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.15
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Very high error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.job }}"
+
+      # =============================================================================
+      # RESPONSE TIME ALERTS
+      # =============================================================================
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 3m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High response time on {{ $labels.job }}"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.job }}"
+
+      - alert: VeryHighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Very high response time on {{ $labels.job }}"
+          description: "95th percentile response time is {{ $value }}s for {{ $labels.job }}"
+
+      # =============================================================================
+      # DATABASE ALERTS
+      # =============================================================================
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 1 minute."
+
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "PostgreSQL high connection usage"
+          description: "PostgreSQL connection usage is {{ $value | humanizePercentage }}"
+
+      - alert: PostgreSQLSlowQueries
+        expr: rate(pg_stat_statements_mean_time_seconds[5m]) > 1
+        for: 3m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "Average query time is {{ $value }}s"
+
+      # =============================================================================
+      # REDIS ALERTS
+      # =============================================================================
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute."
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 2m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisHighKeyEviction
+        expr: rate(redis_evicted_keys_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "Redis high key eviction rate"
+          description: "Redis is evicting {{ $value }} keys per second"
+
+      # =============================================================================
+      # SERVICE MESH ALERTS
+      # =============================================================================
+      - alert: ServiceMeshHighLatency
+        expr: istio_request_duration_milliseconds_bucket{le="1000"} / istio_request_duration_milliseconds_count < 0.95
+        for: 2m
+        labels:
+          severity: warning
+          team: networking
+        annotations:
+          summary: "Service mesh high latency"
+          description: "Less than 95% of requests complete within 1 second"
+
+      - alert: ServiceMeshHighErrorRate
+        expr: rate(istio_requests_total{response_code=~"5.."}[5m]) / rate(istio_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: networking
+        annotations:
+          summary: "Service mesh high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} in service mesh"
+
+      # =============================================================================
+      # AUTHENTICATION SERVICE ALERTS
+      # =============================================================================
+      - alert: AuthHighFailureRate
+        expr: rate(auth_failures_total[5m]) / rate(auth_attempts_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate is {{ $value | humanizePercentage }}"
+
+      - alert: AuthLowJWTValidity
+        expr: jwt_tokens_valid_total / jwt_tokens_issued_total < 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Low JWT token validity rate"
+          description: "Only {{ $value | humanizePercentage }} of issued tokens are valid"
+
+      # =============================================================================
+      # USER SERVICE ALERTS
+      # =============================================================================
+      - alert: UserServiceSlowQueries
+        expr: histogram_quantile(0.95, rate(user_service_query_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "User service slow queries"
+          description: "95th percentile query time is {{ $value }}s"
+
+      - alert: UserServiceHighCacheMissRate
+        expr: rate(user_service_cache_misses_total[5m]) / rate(user_service_cache_requests_total[5m]) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "User service high cache miss rate"
+          description: "Cache miss rate is {{ $value | humanizePercentage }}"
+
+      # =============================================================================
+      # NOTIFICATION SERVICE ALERTS
+      # =============================================================================
+      - alert: NotificationServiceHighQueueSize
+        expr: notification_queue_size > 1000
+        for: 2m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Notification service high queue size"
+          description: "Notification queue size is {{ $value }}"
+
+      - alert: NotificationServiceLowDeliveryRate
+        expr: rate(notification_delivered_total[5m]) / rate(notification_sent_total[5m]) < 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Notification service low delivery rate"
+          description: "Only {{ $value | humanizePercentage }} of notifications are delivered"
+
+      # =============================================================================
+      # PLUGIN RUNTIME ALERTS
+      # =============================================================================
+      - alert: PluginRuntimeHighCPUUsage
+        expr: rate(plugin_runtime_cpu_seconds_total[5m]) > 0.8
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Plugin runtime high CPU usage"
+          description: "Plugin runtime CPU usage is {{ $value | humanizePercentage }}"
+
+      - alert: PluginRuntimeHighMemoryUsage
+        expr: plugin_runtime_memory_bytes / plugin_runtime_memory_limit_bytes > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Plugin runtime high memory usage"
+          description: "Plugin runtime memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: PluginExecutionFailure
+        expr: rate(plugin_executions_failed_total[5m]) / rate(plugin_executions_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High plugin execution failure rate"
+          description: "Plugin execution failure rate is {{ $value | humanizePercentage }}"
+
+      # =============================================================================
+      # SYSTEM RESOURCE ALERTS
+      # =============================================================================
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: VeryHighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Very high CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: LowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 90
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: VeryLowDiskSpace
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 95
+        for: 30s
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Very low disk space on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # =============================================================================
+      # BUSINESS METRICS ALERTS
+      # =============================================================================
+      - alert: LowUserRegistrationRate
+        expr: rate(user_registrations_total[1h]) < 0.1
+        for: 15m
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "Low user registration rate"
+          description: "User registration rate is {{ $value }} per hour"
+
+      - alert: HighUserChurnRate
+        expr: rate(user_deletions_total[1h]) / rate(user_registrations_total[1h]) > 0.2
+        for: 30m
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "High user churn rate"
+          description: "User churn rate is {{ $value | humanizePercentage }}"
+
+      - alert: APIKeyUsageSpike
+        expr: rate(api_key_requests_total[5m]) > 1000
+        for: 2m
+        labels:
+          severity: info
+          team: business
+        annotations:
+          summary: "API key usage spike"
+          description: "API key usage is {{ $value }} requests per second"

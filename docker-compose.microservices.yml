@@ -1,0 +1,327 @@
+# =============================================================================
+# DOCKER COMPOSE FOR MICROSERVICES DEVELOPMENT
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # INFRASTRUCTURE SERVICES
+  # =============================================================================
+  postgres:
+    image: postgres:15
+    container_name: saas-postgres
+    environment:
+      POSTGRES_DB: saas_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: saas-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  consul:
+    image: consul:1.16
+    container_name: saas-consul
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    command: consul agent -server -bootstrap -ui -client=0.0.0.0
+    networks:
+      - saas-network
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # MONITORING STACK
+  # =============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: saas-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - saas-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: saas-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - saas-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: saas-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    networks:
+      - saas-network
+
+  # =============================================================================
+  # API GATEWAY
+  # =============================================================================
+  api-gateway:
+    build:
+      context: ./microservices/api-gateway
+      dockerfile: Dockerfile
+    container_name: saas-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+      REDIS_URL: redis://redis:6379
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      JWT_SECRET: your-jwt-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - saas-network
+    volumes:
+      - ./microservices/api-gateway:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # =============================================================================
+  # SERVICE MESH
+  # =============================================================================
+  service-mesh:
+    build:
+      context: ./microservices/service-mesh
+      dockerfile: Dockerfile
+    container_name: saas-service-mesh
+    ports:
+      - "3002:3000"
+    environment:
+      NODE_ENV: development
+      CONSUL_HOST: consul
+      CONSUL_PORT: 8500
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    networks:
+      - saas-network
+    volumes:
+      - ./microservices/service-mesh:/app
+      - /app/node_modules
+    command: npm run dev
+
+  # =============================================================================
+  # CORE SERVICES
+  # =============================================================================
+  auth-service:
+    build:
+      context: ./microservices/auth-service
+      dockerfile: Dockerfile
+    container_name: saas-auth-service
+    ports:
+      - "3003:3001"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-jwt-secret-key
+      SERVICE_MESH_URL: http://service-mesh:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      service-mesh:
+        condition: service_started
+    networks:
+      - saas-network
+    volumes:
+      - ./microservices/auth-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  user-service:
+    build:
+      context: ./microservices/user-service
+      dockerfile: Dockerfile
+    container_name: saas-user-service
+    ports:
+      - "3004:3002"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+      REDIS_URL: redis://redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      SERVICE_MESH_URL: http://service-mesh:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      service-mesh:
+        condition: service_started
+    networks:
+      - saas-network
+    volumes:
+      - ./microservices/user-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  notification-service:
+    build:
+      context: ./microservices/notification-service
+      dockerfile: Dockerfile
+    container_name: saas-notification-service
+    ports:
+      - "3005:3003"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SERVICE_MESH_URL: http://service-mesh:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      service-mesh:
+        condition: service_started
+    networks:
+      - saas-network
+    volumes:
+      - ./microservices/notification-service:/app
+      - /app/node_modules
+    command: npm run dev
+
+  plugin-runtime:
+    build:
+      context: ./microservices/plugin-runtime
+      dockerfile: Dockerfile
+    container_name: saas-plugin-runtime
+    ports:
+      - "3006:3004"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+      REDIS_URL: redis://redis:6379
+      SERVICE_MESH_URL: http://service-mesh:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      service-mesh:
+        condition: service_started
+    networks:
+      - saas-network
+    volumes:
+      - ./microservices/plugin-runtime:/app
+      - /app/node_modules
+      - ./plugins:/app/plugins:ro
+    command: npm run dev
+
+  # =============================================================================
+  # NEXT.JS FRONTEND (MONOLITH TRANSITION)
+  # =============================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saas-frontend
+    ports:
+      - "3007:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/saas_platform
+      REDIS_URL: redis://redis:6379
+      API_GATEWAY_URL: http://api-gateway:3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      NEXTAUTH_URL: http://localhost:3007
+      NEXTAUTH_SECRET: your-nextauth-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    networks:
+      - saas-network
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+# =============================================================================
+# NETWORKS AND VOLUMES
+# =============================================================================
+networks:
+  saas-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

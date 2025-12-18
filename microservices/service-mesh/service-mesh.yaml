@@ -1,0 +1,207 @@
+# =============================================================================
+# SERVICE MESH IMPLEMENTATION
+# =============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: service-mesh
+  labels:
+    name: service-mesh
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-mesh-config
+  namespace: service-mesh
+data:
+  config.yaml: |
+    # Service Mesh Configuration
+    mesh:
+      name: "saas-mesh"
+      version: "1.0.0"
+      
+    # Traffic Management
+    traffic:
+      loadBalancing:
+        algorithm: "round_robin"
+        healthCheckInterval: "30s"
+        unhealthyThreshold: 3
+        healthyThreshold: 2
+        
+      retries:
+        attempts: 3
+        perTryTimeout: "2s"
+        retryOn: "5xx,gateway-error,connect-failure,refused-stream"
+        
+      timeouts:
+        request: "30s"
+        connection: "10s"
+        
+    # Security
+    security:
+      mtls:
+        mode: "permissive" # STRICT, PERMISSIVE, DISABLE
+        autoMtls: true
+        
+      authPolicy:
+        enabled: true
+        jwt:
+          providers:
+            - name: "auth-service"
+              issuer: "https://auth-service.svc.cluster.local"
+              jwksUri: "https://auth-service.svc.cluster.local/.well-known/jwks.json"
+              
+    # Observability
+    observability:
+      tracing:
+        enabled: true
+        sampling: 100
+        jaeger:
+          endpoint: "http://jaeger-collector:14268/api/traces"
+          
+      metrics:
+        enabled: true
+        prometheus:
+          endpoint: "http://prometheus:9090"
+          
+      logging:
+        enabled: true
+        level: "info"
+        accessLog:
+          enabled: true
+          format: "json"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-mesh-controller
+  namespace: service-mesh
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-mesh-controller
+  template:
+    metadata:
+      labels:
+        app: service-mesh-controller
+    spec:
+      containers:
+      - name: controller
+        image: service-mesh/controller:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/config.yaml"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: service-mesh-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-mesh-controller
+  namespace: service-mesh
+spec:
+  selector:
+    app: service-mesh-controller
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: auth-service-vs
+  namespace: service-mesh
+spec:
+  hosts:
+  - auth-service
+  http:
+  - match:
+    - uri:
+        prefix: "/api/v1/auth"
+    route:
+    - destination:
+        host: auth-service
+        port:
+          number: 3001
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: user-service-vs
+  namespace: service-mesh
+spec:
+  hosts:
+  - user-service
+  http:
+  - match:
+    - uri:
+        prefix: "/api/v1/users"
+    route:
+    - destination:
+        host: user-service
+        port:
+          number: 3002
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: auth-service-dr
+  namespace: service-mesh
+spec:
+  host: auth-service
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        maxRequestsPerConnection: 10
+    circuitBreaker:
+      consecutiveErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: auth-service-authz
+  namespace: service-mesh
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/service-mesh/sa/service-mesh-controller"]
+  - to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
