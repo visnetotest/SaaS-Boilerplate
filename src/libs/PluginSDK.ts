@@ -48,7 +48,7 @@ export class Plugin {
     this.version = context.config?.version || '1.0.0'
     this.logger = context.logger || console
     this.storage = context.storage || ({} as PluginStorage)
-    this.api = context.api || ({} as PluginAPI)
+    this.api = context.api || {} as PluginAPI
   }
 
   // =============================================================================
@@ -195,7 +195,7 @@ export class Plugin {
   /**
    * Get configuration value
    */
-  async getConfigValue(key) {
+  async getConfigValue(key: string) {
     if (!this.hasPermission('config', 'read')) {
       throw new Error('Permission denied: config:read required')
     }
@@ -285,11 +285,13 @@ export class UIPlugin extends Plugin {
   }
 
   registerUIComponents() {
-    for (const [name, component] of this.components.entries()) {
+    const componentEntries = Array.from(this.components.entries())
+    for (const [name, component] of componentEntries) {
       this.registerComponent(name, component)
     }
 
-    for (const [path, component] of this.routes.entries()) {
+    const routeEntries = Array.from(this.routes.entries())
+    for (const [path, component] of routeEntries) {
       this.registerRoute(path, component)
     }
   }
@@ -355,8 +357,8 @@ export class DataPlugin extends Plugin {
       }
       if (rules.type && typeof data[field] !== rules.type) {
         throw new Error(`Invalid type for field ${field}: expected ${rules.type}`)
-      }
-    }
+  }
+}
 
     return true
   }
@@ -493,7 +495,7 @@ export function createPlugin(manifest, context) {
       await super.onInitialize()
       // Load plugin-specific configuration
       const config = await this.getConfig()
-      if (config && this.context.config) {
+      if (this.context?.config) {
         Object.assign(this.context.config, config)
       }
     }
