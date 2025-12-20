@@ -3,14 +3,17 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/libs/auth'
-import { db } from '@/libs/DB'
-import { pluginRuntime } from '@/services/PluginRuntime'
-import { apiGatewaySchema, serviceRegistrySchema } from '@/models/Schema'
+
+import { auth } from '../libs/auth'
+import { apiGatewaySchema, serviceRegistrySchema } from '../models/Schema'
+import { pluginRuntime } from '../services/PluginRuntime'
+
+// Simple service registry mock
+const serviceRegistry = new Map<string, any>()
 
 /**
  * API Gateway Service
- * 
+ *
  * Routes requests to appropriate backend services
  * Handles authentication, rate limiting, and service discovery
  * Provides unified entry point for all microservices
@@ -67,10 +70,7 @@ export class ApiGateway {
       return await this.routeToServiceRegistry(request, handler)
     } catch (error) {
       console.error('API Gateway error:', error)
-      return NextResponse.json(
-        { success: false, error: 'Internal server error' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
     }
   }
 
@@ -96,15 +96,12 @@ export class ApiGateway {
       const matchingService = this.findMatchingService(request, services)
 
       if (!matchingService) {
-        return NextResponse.json(
-          { error: 'Service not found' },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: 'Service not found' }, { status: 404 })
       }
 
       // Forward request to service
       const serviceUrl = `${matchingService.baseUrl}${request.url.replace('/api/services', '')}`
-      
+
       // Add service context to request headers
       const enhancedRequest = {
         ...request,
@@ -124,10 +121,7 @@ export class ApiGateway {
       })
 
       if (!response.ok) {
-        return NextResponse.json(
-          { error: 'Service error' },
-          { status: response.status || 500 },
-        )
+        return NextResponse.json({ error: 'Service error' }, { status: response.status || 500 })
       }
 
       const responseClone = response.clone()
@@ -135,13 +129,9 @@ export class ApiGateway {
 
       console.log(`API Gateway: ${request.method} ${request.url} -> ${response.status}`)
       return responseClone
-
     } catch (error) {
       console.error('Service registry proxy error:', error)
-      return NextResponse.json(
-        { success: false, error: 'Service proxy failed' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Service proxy failed' }, { status: 500 })
     }
   }
 
@@ -164,10 +154,7 @@ export class ApiGateway {
       // Get service by slug
       const service = await serviceRegistry.getService(serviceSlug)
       if (!service) {
-        return NextResponse.json(
-          { error: 'Service not found' },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: 'Service not found' }, { status: 404 })
       }
 
       // Forward request to service
@@ -192,24 +179,17 @@ export class ApiGateway {
       })
 
       if (!response.ok) {
-        return NextResponse.json(
-          { error: 'Service error' },
-          { status: response.status || 500 },
-        )
-        }
+        return NextResponse.json({ error: 'Service error' }, { status: response.status || 500 })
+      }
 
       const responseClone = response.clone()
       const responseData = await response.json()
 
       console.log(`API Gateway: ${request.method} ${request.url} -> ${response.status}`)
       return responseClone
-
     } catch (error) {
       console.error('Specific service proxy error:', error)
-      return NextResponse.json(
-        { success: false, error: 'Service proxy failed' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Service proxy failed' }, { status: 500 })
     }
   }
 
@@ -234,10 +214,7 @@ export class ApiGateway {
       // Get plugin instance
       const plugin = pluginRuntime.getPlugin(pluginId)
       if (!plugin) {
-        return NextResponse.json(
-          { error: 'Plugin not found or not active' },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: 'Plugin not found or not active' }, { status: 404 })
       }
 
       // Execute plugin method in sandbox
@@ -256,7 +233,6 @@ export class ApiGateway {
         data: result,
         message: `Plugin action ${action} completed`,
       })
-
     } catch (error) {
       console.error('Plugin execution error:', error)
       return NextResponse.json(
@@ -266,10 +242,14 @@ export class ApiGateway {
     }
   }
 
-  private parsePluginExecutionRequest(request: NextRequest): { pluginId: string; action: string; data: any } {
+  private parsePluginExecutionRequest(request: NextRequest): {
+    pluginId: string
+    action: string
+    data: any
+  } {
     const url = new URL(request.url)
     const pathParts = url.pathname.split('/')
-    
+
     if (pathParts[1] !== 'plugins' || pathParts[2] !== 'execute') {
       throw new Error('Invalid plugin execution request')
     }
@@ -285,9 +265,7 @@ export class ApiGateway {
   // SERVICE HEALTH CHECK ROUTE
   // =============================================================================
 
-  private async routeToServiceHealthCheck(
-    request: NextRequest,
-  ): Promise<NextResponse> {
+  private async routeToServiceHealthCheck(request: NextRequest): Promise<NextResponse> {
     try {
       // Check auth permissions
       const session = await auth()
@@ -305,16 +283,12 @@ export class ApiGateway {
         data: {
           serviceId,
           status: healthStatus,
-        timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
         },
       })
-
     } catch (error) {
       console.error('Service health check error:', error)
-      return NextResponse.json(
-        { success: false, error: 'Health check failed' },
-        { status: 500 }
-      )
+      return NextResponse.json({ success: false, error: 'Health check failed' }, { status: 500 })
     }
   }
 
@@ -360,7 +334,7 @@ export class ApiGateway {
   private async initializeHealthChecks(): Promise<void> {
     // Get all services and start periodic health checks
     const services = await serviceRegistry.getServices()
-    
+
     for (const service of services) {
       try {
         await serviceRegistry.updateHealthStatus(service.id, 'healthy')
@@ -370,7 +344,7 @@ export class ApiGateway {
     }
 
     console.log('Health monitoring initialized for all services')
-    
+
     // Start periodic health checks
     setInterval(() => {
       this.performHealthChecks()
@@ -379,7 +353,7 @@ export class ApiGateway {
 
   private async performHealthChecks(): Promise<void> {
     const services = await serviceRegistry.getServices()
-    
+
     const healthCheckPromises = services.map((service) =>
       serviceRegistry.checkServiceHealth(service.id).catch((error) => {
         console.error(`Health check failed for ${service.name}:`, error)
@@ -395,17 +369,11 @@ export class ApiGateway {
 
   private handleGatewayError(error: unknown, request?: NextRequest): NextResponse {
     console.error('API Gateway Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Gateway error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: 'Gateway error' }, { status: 500 })
   }
 
   private handleServiceError(error: unknown, serviceName: string): NextResponse {
     console.error(`Service Error (${serviceName}):`, error)
-    return NextResponse.json(
-      { success: false, error: `Service error: ${error}` },
-      { status: 503 }
-      )
+    return NextResponse.json({ success: false, error: `Service error: ${error}` }, { status: 503 })
   }
 }

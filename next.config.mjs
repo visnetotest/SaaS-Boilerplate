@@ -21,10 +21,23 @@ export default withSentryConfig(
     withNextIntlConfig({
       poweredByHeader: false,
       reactStrictMode: true,
-      serverExternalPackages: ['@electric-sql/pglite'],
+      serverExternalPackages: ['@electric-sql/pglite', 'pg'],
       turbopack: {
         root: process.cwd(),
         },
+      webpack: (config, { isServer }) => {
+        if (!isServer) {
+          // Add polyfills for browser builds
+          config.resolve.fallback = {
+            ...config.resolve.fallback,
+            fs: false,
+            net: false,
+            tls: false,
+            dns: false,
+          }
+        }
+        return config
+      },
     })
   ),
   {
@@ -44,7 +57,7 @@ export default withSentryConfig(
     
     // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
     // This can increase your server load as well as your hosting bill.
-    // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
+    // Note: Check that your configured route will not match with your Next.js middleware, otherwise reporting of client-
     // side errors will fail.
     tunnelRoute: '/monitoring',
     
@@ -56,15 +69,8 @@ export default withSentryConfig(
       treeshake: {
         removeDebugLogging: true,
         },
-      },
-    
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
-    webpack: {
       automaticVercelMonitors: true,
-    },
+      },
     
     // Disable Sentry telemetry
     telemetry: false,

@@ -2,11 +2,11 @@
 // ANALYTICS MICROSERVICE
 // =============================================================================
 
-import express from 'express'
-import { collectDefaultMetrics, Counter, Histogram, Gauge, Registry } from 'prom-client'
-import { Pool } from 'pg'
-import Redis from 'ioredis'
 import { EventEmitter } from 'events'
+import express from 'express'
+import Redis from 'ioredis'
+import { Pool } from 'pg'
+import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client'
 
 // =============================================================================
 // INTERFACES
@@ -27,56 +27,6 @@ interface AnalyticsEvent {
   service?: string
 }
 
-interface MetricData {
-  name: string
-  value: number
-  labels?: Record<string, string>
-  timestamp: Date
-  type: 'counter' | 'gauge' | 'histogram'
-}
-
-interface Report {
-  id: string
-  name: string
-  description: string
-  query: string
-  parameters: Record<string, any>
-  schedule?: string
-  enabled: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-interface Dashboard {
-  id: string
-  name: string
-  description: string
-  widgets: Widget[]
-  layout: LayoutConfig
-  tenantId: string
-  isPublic: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-interface Widget {
-  id: string
-  type: 'metric' | 'chart' | 'table' | 'text'
-  title: string
-  query: string
-  visualization: {
-    type: 'line' | 'bar' | 'pie' | 'table' | 'single-stat'
-    config: Record<string, any>
-  }
-  position: { x: number; y: number; w: number; h: number }
-}
-
-interface LayoutConfig {
-  columns: number
-  rowHeight: number
-  margin: { x: number; y: number }
-}
-
 // =============================================================================
 // METRICS REGISTRY
 // =============================================================================
@@ -87,24 +37,43 @@ class MetricsRegistry {
 
   constructor() {
     collectDefaultMetrics({ register: this.registry })
-    
+
     // Initialize default metrics
     this.initializeMetrics()
   }
 
   private initializeMetrics(): void {
     // HTTP metrics
-    this.createMetric('http_requests_total', 'counter', 'Total HTTP requests', ['method', 'route', 'status'])
-    this.createMetric('http_request_duration_seconds', 'histogram', 'HTTP request duration', ['method', 'route'])
-    
+    this.createMetric('http_requests_total', 'counter', 'Total HTTP requests', [
+      'method',
+      'route',
+      'status',
+    ])
+    this.createMetric('http_request_duration_seconds', 'histogram', 'HTTP request duration', [
+      'method',
+      'route',
+    ])
+
     // Analytics metrics
-    this.createMetric('analytics_events_total', 'counter', 'Total analytics events', ['eventType', 'eventName'])
-    this.createMetric('analytics_event_processing_duration_seconds', 'histogram', 'Event processing duration')
-    
+    this.createMetric('analytics_events_total', 'counter', 'Total analytics events', [
+      'eventType',
+      'eventName',
+    ])
+    this.createMetric(
+      'analytics_event_processing_duration_seconds',
+      'histogram',
+      'Event processing duration'
+    )
+
     // Database metrics
-    this.createMetric('db_queries_total', 'counter', 'Total database queries', ['operation', 'table'])
-    this.createMetric('db_query_duration_seconds', 'histogram', 'Database query duration', ['operation'])
-    
+    this.createMetric('db_queries_total', 'counter', 'Total database queries', [
+      'operation',
+      'table',
+    ])
+    this.createMetric('db_query_duration_seconds', 'histogram', 'Database query duration', [
+      'operation',
+    ])
+
     // Business metrics
     this.createMetric('active_users', 'gauge', 'Number of active users', ['tenantId'])
     this.createMetric('user_sessions_active', 'gauge', 'Number of active sessions', ['tenantId'])
@@ -112,7 +81,7 @@ class MetricsRegistry {
 
   createMetric(name: string, type: string, help: string, labelNames?: string[]): any {
     let metric
-    
+
     switch (type) {
       case 'counter':
         metric = new Counter({ name, help, labelNames, registers: [this.registry] })
@@ -126,7 +95,7 @@ class MetricsRegistry {
       default:
         throw new Error(`Unknown metric type: ${type}`)
     }
-    
+
     this.metrics.set(name, metric)
     return metric
   }
@@ -176,17 +145,16 @@ class EventProcessor extends EventEmitter {
 
   async processEvent(event: AnalyticsEvent): Promise<void> {
     const startTime = Date.now()
-    
+
     try {
       // Add to buffer for batch processing
       this.eventBuffer.push(event)
-      
+
       // Process real-time metrics
       await this.updateRealTimeMetrics(event)
-      
+
       this.metrics.recordProcessingDuration((Date.now() - startTime) / 1000)
       this.emit('eventProcessed', event)
-      
     } catch (error) {
       console.error('Error processing analytics event:', error)
       this.emit('eventProcessingError', event, error)
@@ -198,19 +166,19 @@ class EventProcessor extends EventEmitter {
       const key = `active_users:${event.tenantId}`
       await this.redis.sadd(key, event.userId)
       await this.redis.expire(key, 1800) // 30 minutes
-      
+
       const activeCount = await this.redis.scard(key)
       const activeUsersGauge = this.metrics.getMetric('active_users')
       if (activeUsersGauge) {
         activeUsersGauge.set({ tenantId: event.tenantId }, activeCount)
       }
     }
-    
+
     if (event.eventType === 'session_start' && event.sessionId && event.tenantId) {
       const key = `active_sessions:${event.tenantId}`
       await this.redis.sadd(key, event.sessionId)
       await this.redis.expire(key, 1800)
-      
+
       const sessionCount = await this.redis.scard(key)
       const sessionsGauge = this.metrics.getMetric('user_sessions_active')
       if (sessionsGauge) {
@@ -222,7 +190,7 @@ class EventProcessor extends EventEmitter {
   private startBatchProcessing(): void {
     setInterval(async () => {
       if (this.eventBuffer.length === 0) return
-      
+
       const batch = this.eventBuffer.splice(0, this.batchSize)
       await this.processBatch(batch)
     }, this.batchTimeout)
@@ -230,7 +198,7 @@ class EventProcessor extends EventEmitter {
 
   private async processBatch(events: AnalyticsEvent[]): Promise<void> {
     const startTime = Date.now()
-    
+
     try {
       const query = `
         INSERT INTO analytics_events (
@@ -240,7 +208,7 @@ class EventProcessor extends EventEmitter {
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
         ) ON CONFLICT (id) DO NOTHING
       `
-      
+
       for (const event of events) {
         await this.db.query(query, [
           event.id || this.generateId(),
@@ -254,14 +222,15 @@ class EventProcessor extends EventEmitter {
           event.userAgent,
           event.ip,
           event.referrer,
-          event.service
+          event.service,
         ])
-        
+
         this.metrics.recordEvent(event)
       }
-      
-      console.log(`Processed batch of ${events.length} analytics events in ${Date.now() - startTime}ms`)
-      
+
+      console.log(
+        `Processed batch of ${events.length} analytics events in ${Date.now() - startTime}ms`
+      )
     } catch (error) {
       console.error('Error processing analytics batch:', error)
       // Re-add events to buffer for retry
@@ -298,15 +267,14 @@ class QueryEngine {
 
     const startTime = Date.now()
     let result
-    
+
     try {
       result = await this.db.query(query, parameters)
-      
+
       // Cache successful queries
       if (cacheKey && result.rows.length > 0) {
         await this.redis.setex(cacheKey, 300, JSON.stringify(result.rows)) // 5 minutes cache
       }
-      
     } catch (error) {
       console.error('Error executing analytics query:', error)
       throw error
@@ -314,7 +282,7 @@ class QueryEngine {
 
     const duration = Date.now() - startTime
     console.log(`Query executed in ${duration}ms: ${query.substring(0, 100)}...`)
-    
+
     return result.rows
   }
 
@@ -331,7 +299,7 @@ class QueryEngine {
       GROUP BY DATE_TRUNC('day', timestamp)
       ORDER BY date DESC
     `
-    
+
     const cacheKey = `user_activity:${tenantId}:${startDate.getTime()}:${endDate.getTime()}`
     return this.executeQuery(query, [tenantId, startDate, endDate], cacheKey)
   }
@@ -350,7 +318,7 @@ class QueryEngine {
       ORDER BY count DESC
       LIMIT 20
     `
-    
+
     const cacheKey = `event_breakdown:${tenantId}:${startDate.getTime()}:${endDate.getTime()}`
     return this.executeQuery(query, [tenantId, startDate, endDate], cacheKey)
   }
@@ -371,7 +339,7 @@ class QueryEngine {
       ORDER BY views DESC
       LIMIT $4
     `
-    
+
     const cacheKey = `top_pages:${tenantId}:${startDate.getTime()}:${endDate.getTime()}:${limit}`
     return this.executeQuery(query, [tenantId, startDate, endDate, limit], cacheKey)
   }
@@ -405,7 +373,7 @@ class QueryEngine {
       GROUP BY week_number
       ORDER BY week_number
     `
-    
+
     const cacheKey = `user_retention:${tenantId}:${cohortDate.getTime()}`
     return this.executeQuery(query, [tenantId, cohortDate], cacheKey)
   }
@@ -431,12 +399,12 @@ export class AnalyticsService {
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     })
-    
-    this.redis = new Redis(process.env.REDIS_URL)
+
+    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379')
     this.metrics = new MetricsRegistry()
     this.eventProcessor = new EventProcessor(this.db, this.redis, this.metrics)
     this.queryEngine = new QueryEngine(this.db, this.redis)
-    
+
     this.setupMiddleware()
     this.setupRoutes()
     this.setupDatabase()
@@ -445,37 +413,48 @@ export class AnalyticsService {
   private setupMiddleware(): void {
     this.app.use(express.json())
     this.app.use(express.urlencoded({ extended: true }))
-    
+
     // Metrics middleware
     this.app.use((req, res, next) => {
       const startTime = Date.now()
-      
+
       res.on('finish', () => {
         const duration = (Date.now() - startTime) / 1000
         const requestsCounter = this.metrics.getMetric('http_requests_total')
         const durationHistogram = this.metrics.getMetric('http_request_duration_seconds')
-        
+
         if (requestsCounter) {
-          requestsCounter.inc({ method: req.method, route: req.route?.path || req.path, status: res.statusCode.toString() })
+          requestsCounter.inc({
+            method: req.method,
+            route: req.route?.path || req.path,
+            status: res.statusCode.toString(),
+          })
         }
-        
+
         if (durationHistogram) {
-          durationHistogram.observe({ method: req.method, route: req.route?.path || req.path }, duration)
+          durationHistogram.observe(
+            { method: req.method, route: req.route?.path || req.path },
+            duration
+          )
         }
       })
-      
+
       next()
     })
   }
 
   private setupRoutes(): void {
     // Health check
-    this.app.get('/health', (req, res) => {
-      res.json({ status: 'healthy', service: 'analytics-service', timestamp: new Date().toISOString() })
+    this.app.get('/health', (_, res) => {
+      return res.json({
+        status: 'healthy',
+        service: 'analytics-service',
+        timestamp: new Date().toISOString(),
+      })
     })
 
     // Metrics endpoint
-    this.app.get('/metrics', async (req, res) => {
+    this.app.get('/metrics', async (_, res) => {
       res.set('Content-Type', this.metrics.getRegistry().contentType)
       res.end(await this.metrics.getRegistry().metrics())
     })
@@ -484,18 +463,18 @@ export class AnalyticsService {
     this.app.post('/api/v1/events', async (req, res) => {
       try {
         const events: AnalyticsEvent[] = Array.isArray(req.body) ? req.body : [req.body]
-        
+
         for (const event of events) {
           await this.eventProcessor.processEvent({
             ...event,
-            timestamp: event.timestamp ? new Date(event.timestamp) : new Date()
+            timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
           })
         }
-        
-        res.json({ success: true, processed: events.length })
+
+        return res.json({ success: true, processed: events.length })
       } catch (error) {
         console.error('Error processing events:', error)
-        res.status(500).json({ error: 'Failed to process events' })
+        return res.status(500).json({ error: 'Failed to process events' })
       }
     })
 
@@ -504,10 +483,10 @@ export class AnalyticsService {
       try {
         const { query, parameters, cacheKey } = req.body
         const results = await this.queryEngine.executeQuery(query, parameters, cacheKey)
-        res.json({ data: results })
+        return res.json({ data: results })
       } catch (error) {
         console.error('Error executing query:', error)
-        res.status(500).json({ error: 'Failed to execute query' })
+        return res.status(500).json({ error: 'Failed to execute query' })
       }
     })
 
@@ -515,84 +494,84 @@ export class AnalyticsService {
     this.app.get('/api/v1/reports/user-activity', async (req, res) => {
       try {
         const { tenantId, startDate, endDate } = req.query
-        
+
         if (!tenantId || !startDate || !endDate) {
           return res.status(400).json({ error: 'Missing required parameters' })
         }
-        
+
         const results = await this.queryEngine.getUserActivity(
           tenantId as string,
           new Date(startDate as string),
           new Date(endDate as string)
         )
-        
-        res.json({ data: results })
+
+        return res.json({ data: results })
       } catch (error) {
         console.error('Error generating user activity report:', error)
-        res.status(500).json({ error: 'Failed to generate report' })
+        return res.status(500).json({ error: 'Failed to generate report' })
       }
     })
 
     this.app.get('/api/v1/reports/event-breakdown', async (req, res) => {
       try {
         const { tenantId, startDate, endDate } = req.query
-        
+
         if (!tenantId || !startDate || !endDate) {
           return res.status(400).json({ error: 'Missing required parameters' })
         }
-        
+
         const results = await this.queryEngine.getEventBreakdown(
           tenantId as string,
           new Date(startDate as string),
           new Date(endDate as string)
         )
-        
-        res.json({ data: results })
+
+        return res.json({ data: results })
       } catch (error) {
         console.error('Error generating event breakdown report:', error)
-        res.status(500).json({ error: 'Failed to generate report' })
+        return res.status(500).json({ error: 'Failed to generate report' })
       }
     })
 
     this.app.get('/api/v1/reports/top-pages', async (req, res) => {
       try {
         const { tenantId, startDate, endDate, limit = 10 } = req.query
-        
+
         if (!tenantId || !startDate || !endDate) {
           return res.status(400).json({ error: 'Missing required parameters' })
         }
-        
+
         const results = await this.queryEngine.getTopPages(
           tenantId as string,
           new Date(startDate as string),
           new Date(endDate as string),
           parseInt(limit as string)
         )
-        
-        res.json({ data: results })
+
+        return res.json({ data: results })
       } catch (error) {
         console.error('Error generating top pages report:', error)
-        res.status(500).json({ error: 'Failed to generate report' })
+        return res.status(500).json({ error: 'Failed to generate report' })
       }
     })
 
     this.app.get('/api/v1/reports/user-retention', async (req, res) => {
       try {
         const { tenantId, cohortDate } = req.query
-        
+
         if (!tenantId || !cohortDate) {
           return res.status(400).json({ error: 'Missing required parameters' })
         }
-        
+
         const results = await this.queryEngine.getUserRetention(
           tenantId as string,
           new Date(cohortDate as string)
         )
-        
-        res.json({ data: results })
+
+        return res.json({ data: results })
       } catch (error) {
         console.error('Error generating user retention report:', error)
-        res.status(500).json({ error: 'Failed to generate report' })
+        return res.status(500).json({ error: 'Failed to generate report' })
       }
     })
   }
@@ -671,19 +650,19 @@ export class AnalyticsService {
 
 if (require.main === module) {
   const analyticsService = new AnalyticsService()
-  
+
   process.on('SIGTERM', async () => {
     console.log('Shutting down analytics service...')
     await analyticsService.stop()
     process.exit(0)
   })
-  
+
   process.on('SIGINT', async () => {
     console.log('Shutting down analytics service...')
     await analyticsService.stop()
     process.exit(0)
   })
-  
+
   const port = parseInt(process.env.PORT || '3005')
   analyticsService.start(port)
 }

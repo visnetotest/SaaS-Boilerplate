@@ -2,9 +2,25 @@
 // SaaS BOILERPLATE PLUGIN SDK
 // =============================================================================
 
+import type {
+  PluginAPI,
+  PluginComponent,
+  PluginConfigUpdate,
+  PluginCredentials,
+  PluginDevContext,
+  PluginEventHandler,
+  PluginLogger,
+  PluginOptions,
+  PluginSchema,
+  PluginSDKContext,
+  PluginStorage,
+  PluginToken,
+  PluginWebhookHandler,
+} from '../types/plugin'
+
 /**
  * Plugin Development SDK
- * 
+ *
  * Provides utilities, helpers, and abstractions for plugin development
  * Makes it easier to create robust, secure, and well-behaved plugins
  */
@@ -15,17 +31,24 @@
 
 /**
  * Plugin Base Class
- * 
+ *
  * All plugins should extend this class for compatibility
  */
 export class Plugin {
-  constructor(context) {
+  context: PluginSDKContext
+  name: string
+  version: string
+  logger: PluginLogger
+  storage: PluginStorage
+  api: PluginAPI
+
+  constructor(context: PluginSDKContext) {
     this.context = context
     this.name = context.config?.name || 'Unknown Plugin'
     this.version = context.config?.version || '1.0.0'
     this.logger = context.logger || console
-    this.storage = context.storage || {}
-    this.api = context.api || {}
+    this.storage = context.storage || ({} as PluginStorage)
+    this.api = context.api || ({} as PluginAPI)
   }
 
   // =============================================================================
@@ -221,7 +244,7 @@ export class AuthenticationPlugin extends Plugin {
       type: 'custom',
       authenticate: this.authenticate.bind(this),
       authorize: this.authorize.bind(this),
-      logout: this.logout.bind(this)
+      logout: this.logout.bind(this),
     })
   }
 }
@@ -230,7 +253,10 @@ export class AuthenticationPlugin extends Plugin {
  * UI Plugin Base
  */
 export class UIPlugin extends Plugin {
-  constructor(context) {
+  components: Map<string, PluginComponent>
+  routes: Map<string, any>
+
+  constructor(context: PluginSDKContext) {
     super(context)
     this.components = new Map()
     this.routes = new Map()
@@ -245,7 +271,7 @@ export class UIPlugin extends Plugin {
     this.components.set(name, component)
     this.emit('ui:component-register', {
       name: `${this.name}:${name}`,
-      component
+      component,
     })
   }
 
@@ -254,16 +280,16 @@ export class UIPlugin extends Plugin {
     this.emit('ui:route-register', {
       path: path,
       component,
-      plugin: this.name
+      plugin: this.name,
     })
   }
 
   registerUIComponents() {
-    for (const [name, component] of this.components) {
+    for (const [name, component] of this.components.entries()) {
       this.registerComponent(name, component)
     }
 
-    for (const [path, component] of this.routes) {
+    for (const [path, component] of this.routes.entries()) {
       this.registerRoute(path, component)
     }
   }
@@ -281,7 +307,10 @@ export class UIPlugin extends Plugin {
  * Data Plugin Base
  */
 export class DataPlugin extends Plugin {
-  constructor(context) {
+  dataHandlers: Map<string, PluginWebhookHandler>
+  models: Map<string, PluginSchema>
+
+  constructor(context: PluginSDKContext) {
     super(context)
     this.dataHandlers = new Map()
     this.models = new Map()
@@ -292,7 +321,7 @@ export class DataPlugin extends Plugin {
     this.emit('data:model-register', {
       name: `${this.name}:${name}`,
       schema,
-      plugin: this.name
+      plugin: this.name,
     })
   }
 
@@ -301,14 +330,14 @@ export class DataPlugin extends Plugin {
     this.emit('data:handler-register', {
       type,
       handler,
-      plugin: this.name
+      plugin: this.name,
     })
   }
 
-  async processData(type, data) {
+  async processData(type: string, data: any): Promise<any> {
     const handler = this.dataHandlers.get(type)
     if (handler) {
-      return await handler(data)
+      return await handler(type, data)
     }
     throw new Error(`No handler found for data type: ${type}`)
   }
@@ -337,7 +366,10 @@ export class DataPlugin extends Plugin {
  * Integration Plugin Base
  */
 export class IntegrationPlugin extends Plugin {
-  constructor(context) {
+  endpoints: Map<string, PluginOptions>
+  webhooks: Map<string, PluginWebhookHandler>
+
+  constructor(context: PluginSDKContext) {
     super(context)
     this.endpoints = new Map()
     this.webhooks = new Map()
@@ -348,7 +380,7 @@ export class IntegrationPlugin extends Plugin {
     this.emit('integration:endpoint-register', {
       name: `${this.name}:${name}`,
       config,
-      plugin: this.name
+      plugin: this.name,
     })
   }
 
@@ -357,7 +389,7 @@ export class IntegrationPlugin extends Plugin {
     this.emit('integration:webhook-register', {
       event,
       handler,
-      plugin: this.name
+      plugin: this.name,
     })
   }
 
@@ -370,10 +402,10 @@ export class IntegrationPlugin extends Plugin {
     return await this.httpPost(endpoint.url, data, endpoint.options)
   }
 
-  async handleWebhook(event, data) {
+  async handleWebhook(event: string, data: any): Promise<any> {
     const handler = this.webhooks.get(event)
     if (handler) {
-      return await handler(data)
+      return await handler(event, data)
     }
     this.logger.warn(`No handler found for webhook event: ${event}`)
   }
@@ -402,16 +434,16 @@ export function createManifest(options) {
     provides: options.provides || [],
     requires: options.requires || [],
     config: options.config || { type: 'object', properties: {} },
-    hooks: options.hooks || []
+    hooks: options.hooks || [],
   }
 }
 
 /**
  * Validate plugin manifest
  */
-export function validateManifest(manifest) {
-  const errors = []
-  const warnings = []
+export function validateManifest(manifest: any): any {
+  const errors: string[] = []
+  const warnings: string[] = []
 
   if (!manifest.name || manifest.name.trim().length === 0) {
     errors.push('Plugin name is required')
@@ -442,7 +474,7 @@ export function validateManifest(manifest) {
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -460,8 +492,8 @@ export function createPlugin(manifest, context) {
     async onInitialize() {
       await super.onInitialize()
       // Load plugin-specific configuration
-      const config = await this.getConfigAll()
-      if (config) {
+      const config = await this.getConfig()
+      if (config && this.context.config) {
         Object.assign(this.context.config, config)
       }
     }
@@ -500,7 +532,7 @@ export function checkCompatibility(pluginVersion, requiredVersion) {
  */
 export function createSafeContext(baseContext, overrides = {}) {
   const safeContext = JSON.parse(JSON.stringify(baseContext))
-  
+
   // Apply overrides
   for (const [key, value] of Object.entries(overrides)) {
     if (value !== undefined) {
@@ -515,7 +547,7 @@ export function createSafeContext(baseContext, overrides = {}) {
  * Plugin decorator
  */
 export function plugin(metadata) {
-  return function(target) {
+  return function (target) {
     target.prototype._pluginMetadata = metadata
     return target
   }
@@ -525,18 +557,18 @@ export function plugin(metadata) {
  * Hook decorator
  */
 export function hook(event, priority = 0) {
-  return function(target, propertyKey, descriptor) {
+  return function (target, propertyKey, descriptor) {
     if (!target._hooks) {
       target._hooks = []
     }
-    
+
     target._hooks.push({
       event,
       method: propertyKey,
       priority,
-      handler: descriptor.value
+      handler: descriptor.value,
     })
-    
+
     return descriptor
   }
 }
@@ -545,19 +577,19 @@ export function hook(event, priority = 0) {
  * Permission decorator
  */
 export function requirePermission(resource, actions) {
-  return function(target, propertyKey, descriptor) {
+  return function (target, propertyKey, descriptor) {
     const originalMethod = descriptor.value
-    
-    descriptor.value = async function(...args) {
+
+    descriptor.value = async function (...args) {
       // Check permissions before executing
       if (!this.hasPermission(resource, actions[0])) {
         throw new Error(`Permission denied: ${actions.join(', ')} required for ${resource}`)
       }
-      
+
       // Call original method
       return await originalMethod.apply(this, args)
     }
-    
+
     return descriptor
   }
 }
@@ -579,28 +611,30 @@ export function createDevPlugin(name, config = {}) {
     api: {
       user: {
         getCurrent: async () => ({ id: 'dev-user', name: 'Dev User' }),
-        getById: async () => ({ id: 'dev-user', name: 'Dev User' })
+        getById: async () => ({ id: 'dev-user', name: 'Dev User' }),
       },
       config: {
         get: async (key) => config[key] || null,
-        set: async (key, value) => { config[key] = value }
+        set: async (key, value) => {
+          config[key] = value
+        },
       },
       events: {
         emit: async (event, data) => console.log(`[Event] ${event}:`, data),
-        on: async (event, handler) => console.log(`[Listener] ${event} registered`)
+        on: async (event, handler) => console.log(`[Listener] ${event} registered`),
       },
       http: {
         get: async (url) => ({ status: 200, data: { mock: true, url } }),
-        post: async (url, data) => ({ status: 200, data: { mock: true, url, data } })
+        post: async (url, data) => ({ status: 200, data: { mock: true, url, data } }),
       },
       db: {
-        query: async (sql, params) => ({ mock: true, sql, params })
-      }
+        query: async (sql, params) => ({ mock: true, sql, params }),
+      },
     },
     logger: {
       info: (msg, meta) => console.log(`[${name}] INFO: ${msg}`, meta),
       warn: (msg, meta) => console.warn(`[${name}] WARN: ${msg}`, meta),
-      error: (msg, error, meta) => console.error(`[${name}] ERROR: ${msg}`, error, meta)
+      error: (msg, error, meta) => console.error(`[${name}] ERROR: ${msg}`, error, meta),
     },
     storage: {
       get: async (key) => config.storage?.[key] || null,
@@ -610,8 +644,8 @@ export function createDevPlugin(name, config = {}) {
       },
       delete: async (key) => {
         if (config.storage) delete config.storage[key]
-      }
-    }
+      },
+    },
   }
 
   return createPlugin(
@@ -619,7 +653,7 @@ export function createDevPlugin(name, config = {}) {
       name,
       version: '1.0.0-dev',
       description: `Development plugin: ${name}`,
-      category: 'developer'
+      category: 'developer',
     }),
     mockContext
   )
@@ -631,17 +665,17 @@ export function createDevPlugin(name, config = {}) {
 export async function runDevPlugin(pluginInstance) {
   try {
     console.log(`🚀 Starting development plugin: ${pluginInstance.name}`)
-    
+
     // Initialize
     await pluginInstance.onInitialize()
-    
+
     // Activate
     await pluginInstance.onActivate()
-    
+
     console.log(`✅ Development plugin started successfully`)
     console.log('Available commands:')
     console.log('  - Press Ctrl+C to stop')
-    
+
     // Setup graceful shutdown
     process.on('SIGINT', async () => {
       console.log('\\n🛑 Stopping development plugin...')
@@ -649,7 +683,6 @@ export async function runDevPlugin(pluginInstance) {
       await pluginInstance.onCleanup()
       process.exit(0)
     })
-    
   } catch (error) {
     console.error('❌ Failed to start development plugin:', error)
     process.exit(1)
@@ -676,14 +709,14 @@ export default {
   hook,
   requirePermission,
   createDevPlugin,
-  runDevPlugin
+  runDevPlugin,
 }
 
 // Re-export utilities
 export {
+  createSafeContext as createContext,
   createManifest as createPluginManifest,
-  validateManifest as validatePluginManifest,
   generatePluginId as generateId,
   checkCompatibility as isCompatible,
-  createSafeContext as createContext
+  validateManifest as validatePluginManifest,
 }

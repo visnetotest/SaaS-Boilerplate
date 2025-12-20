@@ -435,3 +435,79 @@ export interface RequestOptions {
   timeout?: number
   retries?: number
 }
+
+// =============================================================================
+// PLUGIN SDK SPECIFIC TYPES
+// =============================================================================
+
+export interface PluginSDKContext {
+  config?: Record<string, any>
+  name?: string
+  version?: string
+  logger?: PluginLogger
+  storage?: PluginStorage
+  api?: PluginAPI
+  permissions?: string[]
+}
+
+export interface PluginLogger {
+  info(message: string, ...args: any[]): void
+  warn(message: string, ...args: any[]): void
+  error(message: string, ...args: any[]): void
+  debug(message: string, ...args: any[]): void
+}
+
+export interface PluginStorage {
+  get(key: string): Promise<any>
+  set(key: string, value: any): Promise<void>
+  delete(key: string): Promise<void>
+  clear(): Promise<void>
+}
+
+export interface PluginEventHandler {
+  (data: any): Promise<void> | void
+}
+
+export interface PluginConfigUpdate {
+  [key: string]: any
+}
+
+export interface PluginCredentials {
+  [key: string]: string
+}
+
+export interface PluginToken {
+  token: string
+  expires?: Date
+  permissions?: string[]
+}
+
+export interface PluginComponent {
+  name: string
+  component: any
+  props?: Record<string, any>
+}
+
+export interface PluginSchema {
+  type: string
+  properties: Record<string, any>
+  required?: string[]
+}
+
+export interface PluginWebhookHandler {
+  (type: string, data: any): Promise<void> | void
+}
+
+export interface PluginMetadata {
+  [key: string]: any
+}
+
+export interface PluginOptions {
+  [key: string]: any
+}
+
+export interface PluginDevContext extends PluginSDKContext {
+  apiKey?: string
+  baseUrl?: string
+  debug?: boolean
+}

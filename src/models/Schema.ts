@@ -35,7 +35,14 @@ export const tenantSchema = pgTable(
     slug: varchar('slug', { length: 100 }).notNull().unique(),
     domain: varchar('domain', { length: 255 }),
     status: varchar('status', { length: 50 }).default('active').notNull(), // active, suspended, deleted
+
+    // Hierarchy fields - self-reference handled via migration
+    parentTenantId: uuid('parent_tenant_id'),
+    hierarchyLevel: integer('hierarchy_level').default(0), // 0 = root level
+    path: text('path'), // Materialized path for efficient tree queries: /root/parent/child
+
     settings: jsonb('settings').$type<Record<string, any>>(),
+    settingsInheritance: jsonb('settings_inheritance').$type<Record<string, any>>(), // Which settings inherit from parent
     metadata: jsonb('metadata').$type<Record<string, any>>(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' })
@@ -46,6 +53,9 @@ export const tenantSchema = pgTable(
   (table) => ({
     slugIdx: uniqueIndex('tenant_slug_idx').on(table.slug),
     statusIdx: index('tenant_status_idx').on(table.status),
+    parentTenantIdIdx: index('tenant_parent_tenant_id_idx').on(table.parentTenantId),
+    hierarchyLevelIdx: index('tenant_hierarchy_level_idx').on(table.hierarchyLevel),
+    pathIdx: index('tenant_path_idx').on(table.path),
   })
 )
 
@@ -61,6 +71,11 @@ export const organizationSchema = pgTable(
     logo: varchar('logo', { length: 500 }),
     website: varchar('website', { length: 500 }),
 
+    // Hierarchy fields - self-reference handled via migration
+    parentOrganizationId: uuid('parent_organization_id'),
+    hierarchyLevel: integer('hierarchy_level').default(0), // 0 = root level within tenant
+    path: text('path'), // Materialized path: /tenant/org1/suborg1
+
     // Stripe billing information
     stripeCustomerId: text('stripe_customer_id'),
     stripeSubscriptionId: text('stripe_subscription_id'),
@@ -72,6 +87,7 @@ export const organizationSchema = pgTable(
 
     // Organization settings
     settings: jsonb('settings').$type<Record<string, any>>(),
+    settingsInheritance: jsonb('settings_inheritance').$type<Record<string, any>>(), // Inheritance rules
 
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' })
@@ -84,6 +100,126 @@ export const organizationSchema = pgTable(
     stripeCustomerIdIdx: uniqueIndex('organization_stripe_customer_id_idx').on(
       table.stripeCustomerId
     ),
+    parentOrganizationIdIdx: index('organization_parent_organization_id_idx').on(
+      table.parentOrganizationId
+    ),
+    hierarchyLevelIdx: index('organization_hierarchy_level_idx').on(table.hierarchyLevel),
+    pathIdx: index('organization_path_idx').on(table.path),
+  })
+)
+
+// =============================================================================
+// TENANT & ORGANIZATION HIERARCHY
+// =============================================================================
+
+export const tenantHierarchySchema = pgTable(
+  'tenant_hierarchy',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenantSchema.id, { onDelete: 'cascade' }),
+    parentTenantId: uuid('parent_tenant_id').references(() => tenantSchema.id, {
+      onDelete: 'cascade',
+    }),
+    hierarchyLevel: integer('hierarchy_level').notNull().default(0),
+    path: text('path').notNull(), // Materialized path: /root/parent/child
+
+    // Inheritance settings
+    canAccessChildren: boolean('can_access_children').default(false),
+    canAccessParent: boolean('can_access_parent').default(false),
+    inheritedPermissions: jsonb('inherited_permissions').$type<Record<string, any>>(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    tenantIdIdx: index('tenant_hierarchy_tenant_id_idx').on(table.tenantId),
+    parentTenantIdIdx: index('tenant_hierarchy_parent_tenant_id_idx').on(table.parentTenantId),
+    hierarchyLevelIdx: index('tenant_hierarchy_hierarchy_level_idx').on(table.hierarchyLevel),
+    pathIdx: index('tenant_hierarchy_path_idx').on(table.path),
+    tenantParentIdx: uniqueIndex('tenant_hierarchy_tenant_parent_idx').on(
+      table.tenantId,
+      table.parentTenantId
+    ),
+  })
+)
+
+export const organizationHierarchySchema = pgTable(
+  'organization_hierarchy',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizationSchema.id, { onDelete: 'cascade' }),
+    parentOrganizationId: uuid('parent_organization_id').references(() => organizationSchema.id, {
+      onDelete: 'cascade',
+    }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenantSchema.id, { onDelete: 'cascade' }),
+    hierarchyLevel: integer('hierarchy_level').notNull().default(0),
+    path: text('path').notNull(), // Materialized path: /tenant/org1/suborg1
+
+    // Inheritance settings
+    canAccessChildren: boolean('can_access_children').default(false),
+    canAccessParent: boolean('can_access_parent').default(false),
+    inheritedPermissions: jsonb('inherited_permissions').$type<Record<string, any>>(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    organizationIdIdx: index('organization_hierarchy_organization_id_idx').on(table.organizationId),
+    parentOrganizationIdIdx: index('organization_hierarchy_parent_organization_id_idx').on(
+      table.parentOrganizationId
+    ),
+    tenantIdIdx: index('organization_hierarchy_tenant_id_idx').on(table.tenantId),
+    hierarchyLevelIdx: index('organization_hierarchy_hierarchy_level_idx').on(table.hierarchyLevel),
+    pathIdx: index('organization_hierarchy_path_idx').on(table.path),
+    orgParentIdx: uniqueIndex('organization_hierarchy_org_parent_idx').on(
+      table.organizationId,
+      table.parentOrganizationId
+    ),
+  })
+)
+
+export const hierarchyRoleSchema = pgTable(
+  'hierarchy_role',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').references(() => tenantSchema.id, { onDelete: 'cascade' }),
+    organizationId: uuid('organization_id').references(() => organizationSchema.id, {
+      onDelete: 'cascade',
+    }),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: text('description'),
+    permissions: jsonb('permissions').$type<string[]>().notNull(),
+
+    // Hierarchy scope
+    scopeType: varchar('scope_type', { length: 50 }).notNull(), // tenant, organization, subtree
+    scopeId: uuid('scope_id'), // ID of the tenant/organization this role applies to
+    appliesToChildren: boolean('applies_to_children').default(false),
+    maxDepth: integer('max_depth'), // Maximum depth this role applies to
+
+    isSystem: boolean('is_system').default(false),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => ({
+    tenantIdIdx: index('hierarchy_role_tenant_id_idx').on(table.tenantId),
+    organizationIdIdx: index('hierarchy_role_organization_id_idx').on(table.organizationId),
+    scopeTypeIdx: index('hierarchy_role_scope_type_idx').on(table.scopeType),
+    scopeIdIdx: index('hierarchy_role_scope_id_idx').on(table.scopeId),
   })
 )
 
@@ -711,3 +847,13 @@ export type NewWorkflowExecution = typeof workflowExecutionSchema.$inferInsert
 
 export type Todo = typeof todoSchema.$inferSelect
 export type NewTodo = typeof todoSchema.$inferInsert
+
+// Hierarchy types
+export type TenantHierarchy = typeof tenantHierarchySchema.$inferSelect
+export type NewTenantHierarchy = typeof tenantHierarchySchema.$inferInsert
+
+export type OrganizationHierarchy = typeof organizationHierarchySchema.$inferSelect
+export type NewOrganizationHierarchy = typeof organizationHierarchySchema.$inferInsert
+
+export type HierarchyRole = typeof hierarchyRoleSchema.$inferSelect
+export type NewHierarchyRole = typeof hierarchyRoleSchema.$inferInsert

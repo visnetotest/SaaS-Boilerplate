@@ -2,10 +2,10 @@
 // CENTRALIZED CONFIGURATION SERVICE
 // =============================================================================
 
-import { Pool } from 'pg'
-import Redis from 'ioredis'
-import { EventEmitter } from 'events'
 import { createHash } from 'crypto'
+import { EventEmitter } from 'events'
+import Redis from 'ioredis'
+import { Pool } from 'pg'
 
 // =============================================================================
 // INTERFACES
@@ -59,7 +59,11 @@ interface ConfigChange {
 // =============================================================================
 
 class ConfigValidator {
-  static validate(key: string, value: any, schema: ConfigSchema): { isValid: boolean; errors: string[] } {
+  static validate(
+    key: string,
+    value: any,
+    schema: ConfigSchema
+  ): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
 
     // Type validation
@@ -103,7 +107,7 @@ class ConfigValidator {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     }
   }
 
@@ -156,30 +160,28 @@ export class CentralizedConfigurationManager extends EventEmitter {
       description: 'Database connection URL',
       category: 'database',
       environment: ['development', 'staging', 'production'],
-      encrypted: true
+      encrypted: true,
     })
 
     this.addSchema({
-      key: 'database.maxConnections',
-      type: 'number',
-      required: true,
-      defaultValue: 20,
-      validation: { min: 1, max: 100 },
-      description: 'Maximum number of database connections',
+      key: 'database.url',
+      type: 'string',
+      defaultValue: 'postgresql://localhost:5432/saas',
+      validation: { pattern: /^postgres(ql)?:\/\/.+/ },
+      description: 'Database connection URL',
       category: 'database',
-      environment: ['development', 'staging', 'production']
-    })
+      environment: ['development', 'staging', 'production'],
+    } as any)
 
     // Security Configuration
     this.addSchema({
       key: 'security.jwt.secret',
       type: 'string',
       required: true,
-      encrypted: true,
       validation: { min: 32 },
       description: 'JWT secret key for token signing',
       category: 'security',
-      environment: ['staging', 'production']
+      environment: ['staging', 'production'],
     })
 
     this.addSchema({
@@ -189,7 +191,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
       validation: { pattern: '^\\d+[smhd]$' },
       description: 'JWT token expiration time',
       category: 'security',
-      environment: ['development', 'staging', 'production']
+      environment: ['development', 'staging', 'production'],
     })
 
     // Microservices Configuration
@@ -200,7 +202,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
       defaultValue: 'http://localhost:3000',
       description: 'API Gateway service URL',
       category: 'microservices',
-      environment: ['development', 'staging', 'production']
+      environment: ['development', 'staging', 'production'],
     })
 
     this.addSchema({
@@ -210,17 +212,18 @@ export class CentralizedConfigurationManager extends EventEmitter {
       defaultValue: 'http://localhost:3001',
       description: 'Authentication service URL',
       category: 'microservices',
-      environment: ['development', 'staging', 'production']
+      environment: ['development', 'staging', 'production'],
     })
 
     // Plugin Configuration
     this.addSchema({
-      key: 'plugins.enabled',
+      key: 'security.rateLimiting.enabled',
       type: 'boolean',
-      defaultValue: true,
-      description: 'Enable/disable plugin system',
-      category: 'plugins',
-      environment: ['development', 'staging', 'production']
+      required: true,
+      defaultValue: false,
+      description: 'Enable rate limiting',
+      category: 'security',
+      environment: ['development', 'staging', 'production'],
     })
 
     this.addSchema({
@@ -230,7 +233,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
       validation: { pattern: '^\\d+[KMGT]?B$' },
       description: 'Plugin sandbox memory limit',
       category: 'plugins',
-      environment: ['staging', 'production']
+      environment: ['staging', 'production'],
     })
 
     // Analytics Configuration
@@ -240,7 +243,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
       defaultValue: true,
       description: 'Enable analytics collection',
       category: 'analytics',
-      environment: ['development', 'staging', 'production']
+      environment: ['development', 'staging', 'production'],
     })
 
     this.addSchema({
@@ -250,24 +253,29 @@ export class CentralizedConfigurationManager extends EventEmitter {
       validation: { min: 10, max: 1000 },
       description: 'Analytics event batch size',
       category: 'analytics',
-      environment: ['development', 'staging', 'production']
+      environment: ['development', 'staging', 'production'],
     })
   }
 
   private addSchema(schema: ConfigSchema): void {
-    this.schema.set(schema.key, schema)
+    this.schema.set(schema.key, schema as any)
+    this.validateSchema(schema)
   }
 
   // =============================================================================
   // CONFIGURATION ACCESS METHODS
   // =============================================================================
 
-  async get<T>(key: string, defaultValue?: T, options?: {
-    tenantId?: string
-    service?: string
-  }): Promise<T> {
+  async get<T>(
+    key: string,
+    defaultValue?: T,
+    options?: {
+      tenantId?: string
+      service?: string
+    }
+  ): Promise<T> {
     const cacheKey = this.getCacheKey(key, options?.tenantId, options?.service)
-    
+
     // Check cache first
     if (this.cache.has(cacheKey)) {
       const config = this.cache.get(cacheKey)!
@@ -284,7 +292,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
 
     // Load from database
     const config = await this.loadFromDatabase(key, options)
-    
+
     if (config) {
       this.cache.set(cacheKey, config)
       await this.redis.setex(cacheKey, 300, JSON.stringify(config)) // 5 minutes cache
@@ -300,14 +308,18 @@ export class CentralizedConfigurationManager extends EventEmitter {
     return defaultValue as T
   }
 
-  async set(key: string, value: any, options?: {
-    tenantId?: string
-    service?: string
-    changedBy?: string
-    reason?: string
-  }): Promise<void> {
+  async set(
+    key: string,
+    value: any,
+    options?: {
+      tenantId?: string
+      service?: string
+      changedBy?: string
+      reason?: string
+    }
+  ): Promise<void> {
     const schema = this.schema.get(key)
-    
+
     if (!schema) {
       throw new Error(`Unknown configuration key: ${key}`)
     }
@@ -323,16 +335,16 @@ export class CentralizedConfigurationManager extends EventEmitter {
 
     const configValue: ConfigValue = {
       key,
-      value: schema.encrypted ? this.encrypt(JSON.stringify(value)) : value,
+      value: value,
       type: schema.type,
       environment: this.environment as any,
       tenantId: options?.tenantId,
       service: options?.service,
-      encrypted: schema.encrypted,
+      encrypted: schema.encrypted as any,
       version: Date.now(),
       createdAt: new Date(),
       updatedAt: new Date(),
-      updatedBy: options?.changedBy || 'system'
+      updatedBy: options?.changedBy || 'system',
     }
 
     // Save to database
@@ -352,19 +364,23 @@ export class CentralizedConfigurationManager extends EventEmitter {
       timestamp: new Date(),
       metadata: {
         tenantId: options?.tenantId,
-        service: options?.service
-      }
+        service: options?.service,
+      },
     }
 
     await this.publishChange(change)
   }
 
-  async watch(key: string, callback: (value: any, change: ConfigChange) => void, options?: {
-    tenantId?: string
-    service?: string
-  }): Promise<() => void> {
+  async watch(
+    key: string,
+    callback: (value: any, change: ConfigChange) => void,
+    options?: {
+      tenantId?: string
+      service?: string
+    }
+  ): Promise<() => void> {
     const eventName = this.getChangeEvent(key, options?.tenantId, options?.service)
-    
+
     const handler = (change: ConfigChange) => {
       if (change.key === key) {
         callback(change.newValue, change)
@@ -383,12 +399,15 @@ export class CentralizedConfigurationManager extends EventEmitter {
   // BULK OPERATIONS
   // =============================================================================
 
-  async getAll(category?: string, options?: {
-    tenantId?: string
-    service?: string
-  }): Promise<Record<string, any>> {
+  async getAll(
+    category?: string,
+    options?: {
+      tenantId?: string
+      service?: string
+    }
+  ): Promise<Record<string, any>> {
     const configs: Record<string, any> = {}
-    
+
     for (const [key, schema] of this.schema.entries()) {
       if (category && schema.category !== category) {
         continue
@@ -409,26 +428,29 @@ export class CentralizedConfigurationManager extends EventEmitter {
     return configs
   }
 
-  async setBulk(configs: Record<string, any>, options?: {
-    tenantId?: string
-    service?: string
-    changedBy?: string
-    reason?: string
-  }): Promise<void> {
+  async setBulk(
+    configs: Record<string, any>,
+    options?: {
+      tenantId?: string
+      service?: string
+      changedBy?: string
+      reason?: string
+    }
+  ): Promise<void> {
     const changes: ConfigChange[] = []
 
     for (const [key, value] of Object.entries(configs)) {
       try {
         const oldValue = await this.get(key, undefined, options)
         await this.set(key, value, options)
-        
+
         changes.push({
           key,
           oldValue,
           newValue: value,
           changedBy: options?.changedBy || 'system',
           reason: options?.reason,
-          timestamp: new Date()
+          timestamp: new Date(),
         })
       } catch (error) {
         console.error(`Failed to set config ${key}:`, error)
@@ -448,10 +470,14 @@ export class CentralizedConfigurationManager extends EventEmitter {
     return this.getAll(undefined, { tenantId })
   }
 
-  async setTenantConfig(tenantId: string, configs: Record<string, any>, options?: {
-    changedBy?: string
-    reason?: string
-  }): Promise<void> {
+  async setTenantConfig(
+    tenantId: string,
+    configs: Record<string, any>,
+    options?: {
+      changedBy?: string
+      reason?: string
+    }
+  ): Promise<void> {
     return this.setBulk(configs, { tenantId, ...options })
   }
 
@@ -459,10 +485,14 @@ export class CentralizedConfigurationManager extends EventEmitter {
     return this.getAll(undefined, { service })
   }
 
-  async setServiceConfig(service: string, configs: Record<string, any>, options?: {
-    changedBy?: string
-    reason?: string
-  }): Promise<void> {
+  async setServiceConfig(
+    service: string,
+    configs: Record<string, any>,
+    options?: {
+      changedBy?: string
+      reason?: string
+    }
+  ): Promise<void> {
     return this.setBulk(configs, { service, ...options })
   }
 
@@ -480,10 +510,10 @@ export class CentralizedConfigurationManager extends EventEmitter {
   async addSchemaField(schema: ConfigSchema): Promise<void> {
     this.validateSchema(schema)
     this.schema.set(schema.key, schema)
-    
+
     // Save schema to database
     await this.saveSchemaToDatabase(schema)
-    
+
     this.emit('schema.added', schema)
   }
 
@@ -493,10 +523,10 @@ export class CentralizedConfigurationManager extends EventEmitter {
     }
 
     this.schema.delete(key)
-    
+
     // Remove from database
     await this.removeSchemaFromDatabase(key)
-    
+
     this.emit('schema.removed', { key })
   }
 
@@ -515,10 +545,13 @@ export class CentralizedConfigurationManager extends EventEmitter {
     return `config.changed:${this.getCacheKey(key, tenantId, service)}`
   }
 
-  private async loadFromDatabase(key: string, options?: {
-    tenantId?: string
-    service?: string
-  }): Promise<ConfigValue | null> {
+  private async loadFromDatabase(
+    key: string,
+    options?: {
+      tenantId?: string
+      service?: string
+    }
+  ): Promise<ConfigValue | null> {
     try {
       const query = `
         SELECT * FROM configuration_values
@@ -534,7 +567,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         key,
         this.environment,
         options?.tenantId || null,
-        options?.service || null
+        options?.service || null,
       ])
 
       if (result.rows.length === 0) {
@@ -553,7 +586,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         version: row.version,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        updatedBy: row.updated_by
+        updatedBy: row.updated_by,
       }
 
       return config
@@ -593,7 +626,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         config.version,
         config.createdAt,
         config.updatedAt,
-        config.updatedBy || null
+        config.updatedBy || null,
       ])
 
       console.log(`Configuration ${config.key} saved to database`)
@@ -634,7 +667,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         schema.description,
         JSON.stringify(schema.environment),
         schema.tenantSpecific || false,
-        schema.serviceSpecific || false
+        schema.serviceSpecific || false,
       ])
     } catch (error) {
       console.error(`Failed to save schema ${schema.key} to database:`, error)
@@ -653,23 +686,26 @@ export class CentralizedConfigurationManager extends EventEmitter {
 
   private async publishChange(change: ConfigChange): Promise<void> {
     this.emit('config.changed', change)
-    
+
     // Publish to Redis for cross-service communication
     await this.redis.publish('config.changed', JSON.stringify(change))
   }
 
   private async publishBulkChange(changes: ConfigChange[]): Promise<void> {
     this.emit('config.bulk.changed', changes)
-    
+
     // Publish to Redis
     await this.redis.publish('config.bulk.changed', JSON.stringify(changes))
   }
 
   private startCacheRefresh(): void {
     // Refresh cache every 5 minutes
-    setInterval(async () => {
-      await this.refreshCache()
-    }, 5 * 60 * 1000)
+    setInterval(
+      async () => {
+        await this.refreshCache()
+      },
+      5 * 60 * 1000
+    )
   }
 
   private async refreshCache(): Promise<void> {
@@ -715,11 +751,14 @@ export class CentralizedConfigurationManager extends EventEmitter {
   // ADMINISTRATION
   // =============================================================================
 
-  async getConfigHistory(key: string, options?: {
-    tenantId?: string
-    service?: string
-    limit?: number
-  }): Promise<ConfigChange[]> {
+  async getConfigHistory(
+    key: string,
+    options?: {
+      tenantId?: string
+      service?: string
+      limit?: number
+    }
+  ): Promise<ConfigChange[]> {
     try {
       const query = `
         SELECT 
@@ -741,7 +780,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         this.environment,
         options?.tenantId || null,
         options?.service || null,
-        options?.limit || 10
+        options?.limit || 10,
       ])
 
       return result.rows.map((row: any) => ({
@@ -749,7 +788,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         oldValue: row.encrypted ? this.decrypt(row.value) : row.value,
         newValue: null, // Would need to calculate from previous version
         changedBy: row.updated_by,
-        timestamp: row.updated_at
+        timestamp: row.updated_at,
       }))
     } catch (error) {
       console.error(`Failed to get config history for ${key}:`, error)
@@ -764,12 +803,12 @@ export class CentralizedConfigurationManager extends EventEmitter {
   }): Promise<Record<string, any>> {
     const configs = await this.getAll(options?.category, {
       tenantId: options?.tenantId,
-      service: options?.service
+      service: options?.service,
     })
 
     // Filter out sensitive values for export
     const exportConfigs: Record<string, any> = {}
-    
+
     for (const [key, value] of Object.entries(configs)) {
       const schema = this.schema.get(key)
       if (schema?.encrypted) {
@@ -782,18 +821,21 @@ export class CentralizedConfigurationManager extends EventEmitter {
     return exportConfigs
   }
 
-  async importConfigs(configs: Record<string, any>, options?: {
-    tenantId?: string
-    service?: string
-    changedBy?: string
-    overwrite?: boolean
-  }): Promise<{ success: string[]; errors: string[] }> {
+  async importConfigs(
+    configs: Record<string, any>,
+    options?: {
+      tenantId?: string
+      service?: string
+      changedBy?: string
+      overwrite?: boolean
+    }
+  ): Promise<{ success: string[]; errors: string[] }> {
     const results = { success: [] as string[], errors: [] as string[] }
 
     for (const [key, value] of Object.entries(configs)) {
       try {
         const schema = this.schema.get(key)
-        
+
         if (!schema) {
           results.errors.push(`Unknown configuration key: ${key}`)
           continue
@@ -804,7 +846,7 @@ export class CentralizedConfigurationManager extends EventEmitter {
         }
 
         const existing = await this.get(key, undefined, options)
-        
+
         if (existing !== undefined && !options?.overwrite) {
           results.errors.push(`Configuration ${key} already exists and overwrite is false`)
           continue

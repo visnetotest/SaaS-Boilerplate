@@ -1,10 +1,9 @@
 'use client'
 
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-
 
 import { Button } from '@/components/ui/button'
 import {
@@ -24,7 +23,13 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Select, SelectItem, SelectTrigger } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -36,21 +41,25 @@ const CreateUserFormSchema = z.object({
   lastName: z.string().min(1, 'Last name is required').max(100),
   status: z.enum(['active', 'inactive']),
   roleIds: z.array(z.string()).optional(),
-  profile: z.object({
-    timezone: z.string().default('UTC'),
-    language: z.string().default('en'),
-    phone: z.string().optional(),
-    bio: z.string().max(500).optional(),
-  }).optional(),
-  preferences: z.object({
-    theme: z.enum(['light', 'dark', 'auto']).default('auto'),
-    notifications: z.object({
-      email: z.boolean().default(true),
-      push: z.boolean().default(true),
-      marketing: z.boolean().default(false),
-      security: z.boolean().default(true),
-    }),
-  }).optional(),
+  profile: z
+    .object({
+      timezone: z.string().default('UTC'),
+      language: z.string().default('en'),
+      phone: z.string().optional(),
+      bio: z.string().max(500).optional(),
+    })
+    .optional(),
+  preferences: z
+    .object({
+      theme: z.enum(['light', 'dark', 'auto']).default('auto'),
+      notifications: z.object({
+        email: z.boolean().default(true),
+        push: z.boolean().default(true),
+        marketing: z.boolean().default(false),
+        security: z.boolean().default(true),
+      }),
+    })
+    .optional(),
 })
 
 type CreateUserFormData = z.infer<typeof CreateUserFormSchema>
@@ -77,7 +86,11 @@ export function CreateUserDialog({
 
   const form = useForm<CreateUserFormData>({
     resolver: zodResolver(CreateUserFormSchema),
-    defaultValues: {
+    values: {
+      tenantId: '',
+      email: '',
+      firstName: '',
+      lastName: '',
       status: 'active',
       profile: {
         timezone: 'UTC',
@@ -99,9 +112,7 @@ export function CreateUserDialog({
     (org) => !selectedTenant || org.tenantId === selectedTenant
   )
 
-  const filteredRoles = roles.filter(
-    (role) => !selectedTenant || role.tenantId === selectedTenant
-  )
+  const filteredRoles = roles.filter((role) => !selectedTenant || role.tenantId === selectedTenant)
 
   const handleSubmit = async (data: CreateUserFormData) => {
     setIsSubmitting(true)
@@ -118,29 +129,30 @@ export function CreateUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>Create New User</DialogTitle>
           <DialogDescription>
-            Add a new user to the system. They will receive an email invitation to set up their account.
+            Add a new user to the system. They will receive an email invitation to set up their
+            account.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
             {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Basic Information</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className='space-y-4'>
+              <h3 className='text-lg font-medium'>Basic Information</h3>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
-                  name="firstName"
+                  name='firstName'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter first name" {...field} />
+                        <Input placeholder='Enter first name' {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -149,12 +161,12 @@ export function CreateUserDialog({
 
                 <FormField
                   control={form.control}
-                  name="lastName"
+                  name='lastName'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter last name" {...field} />
+                        <Input placeholder='Enter last name' {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -164,12 +176,12 @@ export function CreateUserDialog({
 
               <FormField
                 control={form.control}
-                name="email"
+                name='email'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="Enter email address" {...field} />
+                      <Input type='email' placeholder='Enter email address' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -178,19 +190,19 @@ export function CreateUserDialog({
 
               <FormField
                 control={form.control}
-                name="status"
+                name='status'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                          <SelectValue placeholder='Select status' />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value='active'>Active</SelectItem>
+                        <SelectItem value='inactive'>Inactive</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -200,22 +212,25 @@ export function CreateUserDialog({
             </div>
 
             {/* Organization Assignment */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Organization Assignment</h3>
-              
+            <div className='space-y-4'>
+              <h3 className='text-lg font-medium'>Organization Assignment</h3>
+
               <FormField
                 control={form.control}
-                name="tenantId"
+                name='tenantId'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tenant</FormLabel>
-                    <Select onValueChange={(value) => {
-                      field.onChange(value)
-                      setSelectedTenant(value)
-                    }} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value)
+                        setSelectedTenant(value)
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select tenant" />
+                          <SelectValue placeholder='Select tenant' />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -234,18 +249,18 @@ export function CreateUserDialog({
               {filteredOrganizations.length > 0 && (
                 <FormField
                   control={form.control}
-                  name="organizationId"
+                  name='organizationId'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Organization (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select organization" />
+                            <SelectValue placeholder='Select organization' />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No Organization</SelectItem>
+                          <SelectItem value=''>No Organization</SelectItem>
                           {filteredOrganizations.map((org) => (
                             <SelectItem key={org.id} value={org.id}>
                               {org.name}
@@ -262,15 +277,15 @@ export function CreateUserDialog({
               {filteredRoles.length > 0 && (
                 <FormField
                   control={form.control}
-                  name="roleIds"
+                  name='roleIds'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Roles</FormLabel>
-                      <div className="space-y-2">
+                      <div className='space-y-2'>
                         {filteredRoles.map((role) => (
-                          <div key={role.id} className="flex items-center space-x-2">
+                          <div key={role.id} className='flex items-center space-x-2'>
                             <input
-                              type="checkbox"
+                              type='checkbox'
                               id={role.id}
                               checked={field.value?.includes(role.id) || false}
                               onChange={(e) => {
@@ -280,7 +295,7 @@ export function CreateUserDialog({
                                 field.onChange(updatedRoles)
                               }}
                             />
-                            <label htmlFor={role.id} className="text-sm">
+                            <label htmlFor={role.id} className='text-sm'>
                               {role.name}
                             </label>
                           </div>
@@ -294,28 +309,28 @@ export function CreateUserDialog({
             </div>
 
             {/* Profile Settings */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Profile Settings</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className='space-y-4'>
+              <h3 className='text-lg font-medium'>Profile Settings</h3>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
-                  name="profile.timezone"
+                  name='profile.timezone'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Timezone</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select timezone" />
+                            <SelectValue placeholder='Select timezone' />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="UTC">UTC</SelectItem>
-                          <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                          <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                          <SelectItem value="Europe/London">London</SelectItem>
-                          <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+                          <SelectItem value='UTC'>UTC</SelectItem>
+                          <SelectItem value='America/New_York'>Eastern Time</SelectItem>
+                          <SelectItem value='America/Los_Angeles'>Pacific Time</SelectItem>
+                          <SelectItem value='Europe/London'>London</SelectItem>
+                          <SelectItem value='Asia/Tokyo'>Tokyo</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -325,22 +340,22 @@ export function CreateUserDialog({
 
                 <FormField
                   control={form.control}
-                  name="profile.language"
+                  name='profile.language'
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Language</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select language" />
+                            <SelectValue placeholder='Select language' />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
-                          <SelectItem value="de">German</SelectItem>
-                          <SelectItem value="ja">Japanese</SelectItem>
+                          <SelectItem value='en'>English</SelectItem>
+                          <SelectItem value='es'>Spanish</SelectItem>
+                          <SelectItem value='fr'>French</SelectItem>
+                          <SelectItem value='de'>German</SelectItem>
+                          <SelectItem value='ja'>Japanese</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -351,12 +366,12 @@ export function CreateUserDialog({
 
               <FormField
                 control={form.control}
-                name="profile.phone"
+                name='profile.phone'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Phone Number (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter phone number" {...field} />
+                      <Input placeholder='Enter phone number' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -365,14 +380,14 @@ export function CreateUserDialog({
 
               <FormField
                 control={form.control}
-                name="profile.bio"
+                name='profile.bio'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Bio (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter a short biography"
-                        className="resize-none"
+                      <Textarea
+                        placeholder='Enter a short biography'
+                        className='resize-none'
                         rows={3}
                         {...field}
                       />
@@ -384,26 +399,23 @@ export function CreateUserDialog({
             </div>
 
             {/* Notification Preferences */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Notification Preferences</h3>
-              
-              <div className="space-y-3">
+            <div className='space-y-4'>
+              <h3 className='text-lg font-medium'>Notification Preferences</h3>
+
+              <div className='space-y-3'>
                 <FormField
                   control={form.control}
-                  name="preferences.notifications.email"
+                  name='preferences.notifications.email'
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <FormItem className='flex items-center justify-between'>
+                      <div className='space-y-0.5'>
                         <FormLabel>Email Notifications</FormLabel>
-                        <div className="text-sm text-muted-foreground">
+                        <div className='text-sm text-muted-foreground'>
                           Receive notifications via email
                         </div>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -411,20 +423,17 @@ export function CreateUserDialog({
 
                 <FormField
                   control={form.control}
-                  name="preferences.notifications.push"
+                  name='preferences.notifications.push'
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <FormItem className='flex items-center justify-between'>
+                      <div className='space-y-0.5'>
                         <FormLabel>Push Notifications</FormLabel>
-                        <div className="text-sm text-muted-foreground">
+                        <div className='text-sm text-muted-foreground'>
                           Receive push notifications in browser
                         </div>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -432,20 +441,17 @@ export function CreateUserDialog({
 
                 <FormField
                   control={form.control}
-                  name="preferences.notifications.marketing"
+                  name='preferences.notifications.marketing'
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <FormItem className='flex items-center justify-between'>
+                      <div className='space-y-0.5'>
                         <FormLabel>Marketing Emails</FormLabel>
-                        <div className="text-sm text-muted-foreground">
+                        <div className='text-sm text-muted-foreground'>
                           Receive marketing and promotional emails
                         </div>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -453,20 +459,17 @@ export function CreateUserDialog({
 
                 <FormField
                   control={form.control}
-                  name="preferences.notifications.security"
+                  name='preferences.notifications.security'
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between">
-                      <div className="space-y-0.5">
+                    <FormItem className='flex items-center justify-between'>
+                      <div className='space-y-0.5'>
                         <FormLabel>Security Alerts</FormLabel>
-                        <div className="text-sm text-muted-foreground">
+                        <div className='text-sm text-muted-foreground'>
                           Receive security-related notifications
                         </div>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -475,14 +478,10 @@ export function CreateUserDialog({
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type='submit' disabled={isSubmitting}>
                 {isSubmitting ? 'Creating User...' : 'Create User'}
               </Button>
             </DialogFooter>

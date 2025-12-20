@@ -46,16 +46,6 @@ interface CreateNotificationRequest {
   metadata?: Notification['metadata']
 }
 
-interface SendEmailRequest {
-  to: string
-  subject: string
-  html?: string
-  text?: string
-  from?: string
-  templateId?: string
-  templateData?: Record<string, any>
-}
-
 interface SendSmsRequest {
   to: string
   message: string
@@ -102,7 +92,7 @@ class NotificationService {
     this.PORT = parseInt(process.env.PORT || '3005')
     this.SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || ''
     this.PUSH_SERVICE_KEY = process.env.PUSH_SERVICE_KEY
-    
+
     this.initializeMiddleware()
     this.initializeRoutes()
     this.initializeDefaultTemplates()
@@ -110,15 +100,17 @@ class NotificationService {
 
   private async initializeMiddleware() {
     this.app.use(helmet())
-    this.app.use(cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-      credentials: true
-    }))
+    this.app.use(
+      cors({
+        origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+        credentials: true,
+      })
+    )
 
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 200, // limit each IP to 200 requests per windowMs
-      message: { error: 'Too many requests from this IP' }
+      message: { error: 'Too many requests from this IP' },
     })
     this.app.use('/api/', limiter)
 
@@ -149,7 +141,7 @@ class NotificationService {
         variables: ['userName', 'companyName', 'loginUrl'],
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'password_reset',
@@ -166,7 +158,7 @@ class NotificationService {
         variables: ['userName', 'resetUrl'],
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'account_suspended',
@@ -182,11 +174,11 @@ class NotificationService {
         variables: ['userName', 'reason'],
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ]
 
-    defaultTemplates.forEach(template => {
+    defaultTemplates.forEach((template) => {
       this.templates.set(template.id, template)
     })
   }
@@ -202,10 +194,14 @@ class NotificationService {
         uptime: process.uptime(),
         metrics: {
           totalNotifications: this.notifications.size,
-          pendingNotifications: Array.from(this.notifications.values()).filter(n => n.status === 'pending').length,
-          failedNotifications: Array.from(this.notifications.values()).filter(n => n.status === 'failed').length,
-          totalTemplates: this.templates.size
-        }
+          pendingNotifications: Array.from(this.notifications.values()).filter(
+            (n) => n.status === 'pending'
+          ).length,
+          failedNotifications: Array.from(this.notifications.values()).filter(
+            (n) => n.status === 'failed'
+          ).length,
+          totalTemplates: this.templates.size,
+        },
       })
     })
 
@@ -219,7 +215,12 @@ class NotificationService {
         const notificationReq: CreateNotificationRequest = req.body
 
         // Validate required fields
-        if (!notificationReq.userId || !notificationReq.type || !notificationReq.title || !notificationReq.message) {
+        if (
+          !notificationReq.userId ||
+          !notificationReq.type ||
+          !notificationReq.title ||
+          !notificationReq.message
+        ) {
           return res.status(400).json({ error: 'userId, type, title, and message are required' })
         }
 
@@ -235,7 +236,7 @@ class NotificationService {
           retryCount: 0,
           metadata: notificationReq.metadata,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
 
         this.notifications.set(notification.id, notification)
@@ -256,137 +257,153 @@ class NotificationService {
     })
 
     // Get notifications for user
-    this.app.get('/api/notifications/user/:userId', async (req: express.Request, res: express.Response) => {
-      try {
-        const userId = req.params.userId
-        const page = parseInt(req.query.page as string) || 1
-        const limit = parseInt(req.query.limit as string) || 20
-        const status = req.query.status as string
-        const type = req.query.type as string
+    this.app.get(
+      '/api/notifications/user/:userId',
+      async (req: express.Request, res: express.Response) => {
+        try {
+          const userId = req.params.userId
+          const page = parseInt(req.query.page as string) || 1
+          const limit = parseInt(req.query.limit as string) || 20
+          const status = req.query.status as string
+          const type = req.query.type as string
 
-        let notifications = Array.from(this.notifications.values()).filter(n => n.userId === userId)
+          let notifications = Array.from(this.notifications.values()).filter(
+            (n) => n.userId === userId
+          )
 
-        // Apply filters
-        if (status) {
-          notifications = notifications.filter(n => n.status === status)
-        }
-        if (type) {
-          notifications = notifications.filter(n => n.type === type)
-        }
-
-        // Sort by creation date (newest first)
-        notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-
-        // Paginate
-        const startIndex = (page - 1) * limit
-        const endIndex = startIndex + limit
-        const paginatedNotifications = notifications.slice(startIndex, endIndex)
-
-        res.json({
-          notifications: paginatedNotifications,
-          pagination: {
-            page,
-            limit,
-            total: notifications.length,
-            totalPages: Math.ceil(notifications.length / limit),
-            hasNext: endIndex < notifications.length,
-            hasPrev: page > 1
+          // Apply filters
+          if (status) {
+            notifications = notifications.filter((n) => n.status === status)
           }
-        })
-      } catch (error) {
-        console.error('Get notifications error:', error)
-        res.status(500).json({ error: 'Failed to get notifications' })
+          if (type) {
+            notifications = notifications.filter((n) => n.type === type)
+          }
+
+          // Sort by creation date (newest first)
+          notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+
+          // Paginate
+          const startIndex = (page - 1) * limit
+          const endIndex = startIndex + limit
+          const paginatedNotifications = notifications.slice(startIndex, endIndex)
+
+          res.json({
+            notifications: paginatedNotifications,
+            pagination: {
+              page,
+              limit,
+              total: notifications.length,
+              totalPages: Math.ceil(notifications.length / limit),
+              hasNext: endIndex < notifications.length,
+              hasPrev: page > 1,
+            },
+          })
+        } catch (error) {
+          console.error('Get notifications error:', error)
+          res.status(500).json({ error: 'Failed to get notifications' })
+        }
       }
-    })
+    )
 
     // Mark notification as read
-    this.app.put('/api/notifications/:id/read', async (req: express.Request, res: express.Response) => {
-      try {
-        const notificationId = req.params.id
-        const notification = this.notifications.get(notificationId)
+    this.app.put(
+      '/api/notifications/:id/read',
+      async (req: express.Request, res: express.Response) => {
+        try {
+          const notificationId = req.params.id
+          const notification = this.notifications.get(notificationId)
 
-        if (!notification) {
-          return res.status(404).json({ error: 'Notification not found' })
+          if (!notification) {
+            return res.status(404).json({ error: 'Notification not found' })
+          }
+
+          if (notification.status === 'delivered') {
+            notification.status = 'read'
+            notification.updatedAt = new Date()
+          }
+
+          res.json({ notification })
+        } catch (error) {
+          console.error('Mark notification read error:', error)
+          res.status(500).json({ error: 'Failed to mark notification as read' })
         }
-
-        if (notification.status === 'delivered') {
-          notification.status = 'read'
-          notification.updatedAt = new Date()
-        }
-
-        res.json({ notification })
-      } catch (error) {
-        console.error('Mark notification read error:', error)
-        res.status(500).json({ error: 'Failed to mark notification as read' })
       }
-    })
+    )
 
     // Delete notification
-    this.app.delete('/api/notifications/:id', async (req: express.Request, res: express.Response) => {
-      try {
-        const notificationId = req.params.id
-        const notification = this.notifications.get(notificationId)
+    this.app.delete(
+      '/api/notifications/:id',
+      async (req: express.Request, res: express.Response) => {
+        try {
+          const notificationId = req.params.id
+          const notification = this.notifications.get(notificationId)
 
-        if (!notification) {
-          return res.status(404).json({ error: 'Notification not found' })
+          if (!notification) {
+            return res.status(404).json({ error: 'Notification not found' })
+          }
+
+          this.notifications.delete(notificationId)
+
+          res.status(204).send()
+        } catch (error) {
+          console.error('Delete notification error:', error)
+          res.status(500).json({ error: 'Failed to delete notification' })
         }
-
-        this.notifications.delete(notificationId)
-
-        res.status(204).send()
-      } catch (error) {
-        console.error('Delete notification error:', error)
-        res.status(500).json({ error: 'Failed to delete notification' })
       }
-    })
+    )
 
     // =============================================================================
     // BATCH NOTIFICATION ROUTES
     // =============================================================================
 
     // Send bulk notifications
-    this.app.post('/api/notifications/bulk', async (req: express.Request, res: express.Response) => {
-      try {
-        const { userIds, notification } = req.body
+    this.app.post(
+      '/api/notifications/bulk',
+      async (req: express.Request, res: express.Response) => {
+        try {
+          const { userIds, notification } = req.body
 
-        if (!userIds || !Array.isArray(userIds) || !notification) {
-          return res.status(400).json({ error: 'userIds array and notification object are required' })
-        }
-
-        const notifications: Notification[] = []
-
-        for (const userId of userIds) {
-          const newNotification: Notification = {
-            id: crypto.randomUUID(),
-            userId,
-            type: notification.type,
-            title: notification.title,
-            message: notification.message,
-            data: notification.data,
-            priority: notification.priority || 'normal',
-            status: 'pending',
-            retryCount: 0,
-            metadata: notification.metadata,
-            createdAt: new Date(),
-            updatedAt: new Date()
+          if (!userIds || !Array.isArray(userIds) || !notification) {
+            return res
+              .status(400)
+              .json({ error: 'userIds array and notification object are required' })
           }
 
-          this.notifications.set(newNotification.id, newNotification)
-          notifications.push(newNotification)
+          const notifications: Notification[] = []
 
-          // Send notification asynchronously
-          this.sendNotification(newNotification)
+          for (const userId of userIds) {
+            const newNotification: Notification = {
+              id: crypto.randomUUID(),
+              userId,
+              type: notification.type,
+              title: notification.title,
+              message: notification.message,
+              data: notification.data,
+              priority: notification.priority || 'normal',
+              status: 'pending',
+              retryCount: 0,
+              metadata: notification.metadata,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+
+            this.notifications.set(newNotification.id, newNotification)
+            notifications.push(newNotification)
+
+            // Send notification asynchronously
+            this.sendNotification(newNotification)
+          }
+
+          res.status(201).json({
+            message: `Created ${notifications.length} notifications`,
+            notifications,
+          })
+        } catch (error) {
+          console.error('Bulk notification error:', error)
+          res.status(500).json({ error: 'Failed to create bulk notifications' })
         }
-
-        res.status(201).json({ 
-          message: `Created ${notifications.length} notifications`,
-          notifications 
-        })
-      } catch (error) {
-        console.error('Bulk notification error:', error)
-        res.status(500).json({ error: 'Failed to create bulk notifications' })
       }
-    })
+    )
 
     // =============================================================================
     // TEMPLATE MANAGEMENT ROUTES
@@ -399,7 +416,7 @@ class NotificationService {
         let templates = Array.from(this.templates.values())
 
         if (type) {
-          templates = templates.filter(t => t.type === type)
+          templates = templates.filter((t) => t.type === type)
         }
 
         res.json({ templates })
@@ -425,7 +442,7 @@ class NotificationService {
           variables: templateData.variables || [],
           isActive: templateData.isActive !== false,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
 
         this.templates.set(template.id, template)
@@ -441,16 +458,18 @@ class NotificationService {
     // ERROR HANDLING
     // =============================================================================
 
-    this.app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('Unhandled error:', err)
-      res.status(500).json({
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
-      })
-    })
+    this.app.use(
+      (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        console.error('Unhandled error:', err)
+        res.status(500).json({
+          error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+        })
+      }
+    )
 
     // 404 handler
     this.app.use('*', (req: express.Request, res: express.Response) => {
-      res.status(404).json({ 
+      res.status(404).json({
         error: 'Route not found',
         availableEndpoints: [
           'GET /health',
@@ -460,8 +479,8 @@ class NotificationService {
           'DELETE /api/notifications/:id',
           'POST /api/notifications/bulk',
           'GET /api/templates',
-          'POST /api/templates'
-        ]
+          'POST /api/templates',
+        ],
       })
     })
   }
@@ -471,133 +490,144 @@ class NotificationService {
   // =============================================================================
 
   private async sendNotification(notification: Notification): Promise<boolean> {
-      try {
-        notification.status = 'sent'
-        notification.sentAt = new Date()
+    try {
+      notification.status = 'sent'
+      notification.sentAt = new Date()
+      notification.updatedAt = new Date()
+
+      let success = false
+
+      switch (notification.type) {
+        case 'email':
+          success = await this.sendEmail(notification)
+          break
+        case 'sms':
+          success = await this.sendSms(notification)
+          break
+        case 'push':
+          success = await this.sendPush(notification)
+          break
+        case 'in_app':
+          success = await this.sendInApp(notification)
+          break
+      }
+
+      if (success) {
+        notification.status = 'delivered'
+        notification.deliveredAt = new Date()
         notification.updatedAt = new Date()
-
-        let success = false
-
-        switch (notification.type) {
-          case 'email':
-            success = await this.sendEmail(notification)
-            break
-          case 'sms':
-            success = await this.sendSms(notification)
-            break
-          case 'push':
-            success = await this.sendPush(notification)
-            break
-          case 'in_app':
-            success = await this.sendInApp(notification)
-            break
-        }
-
-        if (success) {
-          notification.status = 'delivered'
-          notification.deliveredAt = new Date()
-          notification.updatedAt = new Date()
-        } else {
-          notification.status = 'failed'
-          notification.failedAt = new Date()
-          notification.updatedAt = new Date()
-          
-          // Schedule retry if retry count < 3
-          if (notification.retryCount < 3) {
-            notification.retryCount++
-            setTimeout(() => this.sendNotification(notification), 5000 * Math.pow(2, notification.retryCount))
-          }
-        }
-
-        // Cache notification status
-        if (this.redis) {
-          await this.redis.setEx(`notification:${notification.id}`, 86400, JSON.stringify(notification))
-        }
-
-        return success
-      } catch (error) {
-        console.error('Send notification error:', error)
+      } else {
         notification.status = 'failed'
         notification.failedAt = new Date()
         notification.updatedAt = new Date()
-        return false
-      }
-    }
 
-    private async sendEmail(notification: Notification): Promise<boolean> {
-      try {
-        if (!this.SENDGRID_API_KEY) {
-          console.warn('SendGrid API key not configured, simulating email send')
-          return true
+        // Schedule retry if retry count < 3
+        if (notification.retryCount < 3) {
+          notification.retryCount++
+          setTimeout(
+            () => this.sendNotification(notification),
+            5000 * Math.pow(2, notification.retryCount)
+          )
         }
-
-        // In a real implementation, use SendGrid API
-        console.log(`📧 Sending email to user ${notification.userId}: ${notification.title}`)
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        return true
-      } catch (error) {
-        console.error('Send email error:', error)
-        return false
       }
+
+      // Cache notification status
+      if (this.redis) {
+        await this.redis.setEx(
+          `notification:${notification.id}`,
+          86400,
+          JSON.stringify(notification)
+        )
+      }
+
+      return success
+    } catch (error) {
+      console.error('Send notification error:', error)
+      notification.status = 'failed'
+      notification.failedAt = new Date()
+      notification.updatedAt = new Date()
+      return false
     }
+  }
 
-    private async sendSms(notification: Notification): Promise<boolean> {
-      try {
-        console.log(`📱 Sending SMS to user ${notification.userId}: ${notification.title}`)
-        
-        // Simulate SMS send
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
+  private async sendEmail(notification: Notification): Promise<boolean> {
+    try {
+      if (!this.SENDGRID_API_KEY) {
+        console.warn('SendGrid API key not configured, simulating email send')
         return true
-      } catch (error) {
-        console.error('Send SMS error:', error)
-        return false
       }
-    }
 
-    private async sendPush(notification: Notification): Promise<boolean> {
-      try {
-        console.log(`📲 Sending push notification to user ${notification.userId}: ${notification.title}`)
-        
-        // In a real implementation, use Firebase Cloud Messaging or similar
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        return true
-      } catch (error) {
-        console.error('Send push error:', error)
-        return false
-      }
-    }
+      // In a real implementation, use SendGrid API
+      console.log(`📧 Sending email to user ${notification.userId}: ${notification.title}`)
 
-    private async sendInApp(notification: Notification): Promise<boolean> {
-      try {
-        console.log(`🔔 Creating in-app notification for user ${notification.userId}: ${notification.title}`)
-        
-        // Store in Redis for real-time delivery
-        if (this.redis) {
-          await this.redis.lpush(`notifications:${notification.userId}`, JSON.stringify(notification))
-          await this.redis.expire(`notifications:${notification.userId}`, 86400) // 24 hours
-        }
-        
-        return true
-      } catch (error) {
-        console.error('Send in-app error:', error)
-        return false
-      }
-    }
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    private async scheduleNotification(notification: Notification, scheduleFor: Date): Promise<void> {
-      const delay = scheduleFor.getTime() - Date.now()
-      
-      if (delay > 0) {
-        setTimeout(() => this.sendNotification(notification), delay)
-        console.log(`⏰ Scheduled notification ${notification.id} for ${scheduleFor.toISOString()}`)
-      } else {
-        await this.sendNotification(notification)
+      return true
+    } catch (error) {
+      console.error('Send email error:', error)
+      return false
+    }
+  }
+
+  private async sendSms(notification: Notification): Promise<boolean> {
+    try {
+      console.log(`📱 Sending SMS to user ${notification.userId}: ${notification.title}`)
+
+      // Simulate SMS send
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      return true
+    } catch (error) {
+      console.error('Send SMS error:', error)
+      return false
+    }
+  }
+
+  private async sendPush(notification: Notification): Promise<boolean> {
+    try {
+      console.log(
+        `📲 Sending push notification to user ${notification.userId}: ${notification.title}`
+      )
+
+      // In a real implementation, use Firebase Cloud Messaging or similar
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      return true
+    } catch (error) {
+      console.error('Send push error:', error)
+      return false
+    }
+  }
+
+  private async sendInApp(notification: Notification): Promise<boolean> {
+    try {
+      console.log(
+        `🔔 Creating in-app notification for user ${notification.userId}: ${notification.title}`
+      )
+
+      // Store in Redis for real-time delivery
+      if (this.redis) {
+        await this.redis.lpush(`notifications:${notification.userId}`, JSON.stringify(notification))
+        await this.redis.expire(`notifications:${notification.userId}`, 86400) // 24 hours
       }
+
+      return true
+    } catch (error) {
+      console.error('Send in-app error:', error)
+      return false
+    }
+  }
+
+  private async scheduleNotification(notification: Notification, scheduleFor: Date): Promise<void> {
+    const delay = scheduleFor.getTime() - Date.now()
+
+    if (delay > 0) {
+      setTimeout(() => this.sendNotification(notification), delay)
+      console.log(`⏰ Scheduled notification ${notification.id} for ${scheduleFor.toISOString()}`)
+    } else {
+      await this.sendNotification(notification)
+    }
   }
 
   async start() {
@@ -629,14 +659,14 @@ class NotificationService {
 async function startNotificationService() {
   const notificationService = new NotificationService()
   await notificationService.start()
-  
+
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received, shutting down gracefully')
     await notificationService.stop()
     process.exit(0)
   })
-  
+
   process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received, shutting down gracefully')
     await notificationService.stop()

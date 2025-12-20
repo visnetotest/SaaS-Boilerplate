@@ -15,6 +15,13 @@
       "when": 1765836460465,
       "tag": "0001_clever_excalibur",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766166571451,
+      "tag": "0002_dark_thundra",
+      "breakpoints": true
     }
   ]
 }
