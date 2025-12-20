@@ -10,23 +10,23 @@ export enum Permissions {
   ADMIN_USER_READ = 'admin:user:read',
   ADMIN_USER_WRITE = 'admin:user:write',
   ADMIN_USER_DELETE = 'admin:user:delete',
-  
+
   // Tenant Management
   ADMIN_TENANT_READ = 'admin:tenant:read',
   ADMIN_TENANT_WRITE = 'admin:tenant:write',
   ADMIN_TENANT_DELETE = 'admin:tenant:delete',
-  
+
   // Analytics & Reports
   ADMIN_ANALYTICS_READ = 'admin:analytics:read',
   ADMIN_ANALYTICS_EXPORT = 'admin:analytics:export',
-  
+
   // System Management
   ADMIN_SYSTEM_READ = 'admin:system:read',
   ADMIN_SYSTEM_WRITE = 'admin:system:write',
 }
 
 // Simple permission check (you can enhance this later)
-async function checkUserPermission(userId: string, permission: Permissions): Promise<boolean> {
+async function checkUserPermission(_userId: string, _permission: Permissions): Promise<boolean> {
   // This is a simplified version - implement based on your auth system
   // For now, return true for all authenticated users (NOT PRODUCTION READY)
   // In production, you would check against a database of user roles/permissions
@@ -46,61 +46,78 @@ export async function withRBAC(
     // Get user session (implement based on your auth system)
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
-      return NextResponse.json({ 
-        error: 'Unauthorized - Missing authentication header' 
-      }, { status: 401 })
+      return NextResponse.json(
+        {
+          error: 'Unauthorized - Missing authentication header',
+        },
+        { status: 401 }
+      )
     }
 
     // Extract user info from token (implement based on your auth system)
     const user = await getUserFromToken(authHeader)
     if (!user) {
-      return NextResponse.json({ 
-        error: 'Unauthorized - Invalid token' 
-      }, { status: 401 })
+      return NextResponse.json(
+        {
+          error: 'Unauthorized - Invalid token',
+        },
+        { status: 401 }
+      )
     }
 
     // Check if user is active
     if (user.status !== 'active') {
-      return NextResponse.json({ 
-        error: 'Forbidden - Account is not active' 
-      }, { status: 403 })
+      return NextResponse.json(
+        {
+          error: 'Forbidden - Account is not active',
+        },
+        { status: 403 }
+      )
     }
 
     // Check permissions
-    const requiredArray = Array.isArray(requiredPermissions) ? requiredPermissions : [requiredPermissions]
-    
+    const requiredArray = Array.isArray(requiredPermissions)
+      ? requiredPermissions
+      : [requiredPermissions]
+
     let hasRequiredPermission = false
-    
+
     if (options.requireAll) {
       // User must have ALL specified permissions
-      hasRequiredPermission = requiredArray.every(async (permission) => 
-        await checkUserPermission(user.id, permission)
+      hasRequiredPermission = requiredArray.every(
+        async (permission) => await checkUserPermission(user.id, permission)
       )
     } else {
       // User needs ANY of the specified permissions
-      hasRequiredPermission = requiredArray.some(async (permission) => 
-        await checkUserPermission(user.id, permission)
+      hasRequiredPermission = requiredArray.some(
+        async (permission) => await checkUserPermission(user.id, permission)
       )
     }
 
     if (!hasRequiredPermission) {
-      const permissionNames = requiredArray.map(p => p)
-      
-      return NextResponse.json({ 
-        error: 'Forbidden - Insufficient permissions',
-        requiredPermissions: permissionNames
-      }, { status: 403 })
+      const permissionNames = requiredArray.map((p) => p)
+
+      return NextResponse.json(
+        {
+          error: 'Forbidden - Insufficient permissions',
+          requiredPermissions: permissionNames,
+        },
+        { status: 403 }
+      )
     }
 
     // Check tenant-scoped permissions if required
     if (options.tenantScoped && user.tenantId) {
       const url = new URL(request.url)
       const requestedTenantId = url.searchParams.get('tenantId')
-      
+
       if (requestedTenantId && requestedTenantId !== user.tenantId) {
-        return NextResponse.json({ 
-          error: 'Forbidden - Cannot access other tenant data' 
-        }, { status: 403 })
+        return NextResponse.json(
+          {
+            error: 'Forbidden - Cannot access other tenant data',
+          },
+          { status: 403 }
+        )
       }
     }
 
@@ -108,9 +125,12 @@ export async function withRBAC(
     return null // Continue with the request
   } catch (error) {
     console.error('RBAC middleware error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -127,7 +147,7 @@ async function getUserFromToken(token: string): Promise<{
     // For example, if using JWT:
     const jwt = require('jsonwebtoken')
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as any
-    
+
     // For now, return admin user with all permissions
     return {
       id: decoded.userId,
@@ -155,7 +175,7 @@ export function requirePermission(
     if (result) {
       return result // Return the error response
     }
-    
+
     // If we reach here, user has permission - continue to the actual handler
     return null
   }
@@ -171,7 +191,9 @@ export const requireTenantWritePermission = requirePermission(Permissions.ADMIN_
 export const requireTenantDeletePermission = requirePermission(Permissions.ADMIN_TENANT_DELETE)
 
 export const requireAnalyticsReadPermission = requirePermission(Permissions.ADMIN_ANALYTICS_READ)
-export const requireAnalyticsExportPermission = requirePermission(Permissions.ADMIN_ANALYTICS_EXPORT)
+export const requireAnalyticsExportPermission = requirePermission(
+  Permissions.ADMIN_ANALYTICS_EXPORT
+)
 
 export const requireSystemReadPermission = requirePermission(Permissions.ADMIN_SYSTEM_READ)
 export const requireSystemWritePermission = requirePermission(Permissions.ADMIN_SYSTEM_WRITE)

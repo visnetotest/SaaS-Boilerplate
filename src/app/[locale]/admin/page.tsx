@@ -1,4 +1,4 @@
-import { AdminPanel } from '@/features/admin/AdminPanel'
+import AdminPanel from '@/features/admin/AdminPanel'
 
 export default function AdminPage() {
   return (

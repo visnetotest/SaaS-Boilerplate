@@ -22,22 +22,6 @@ export default withSentryConfig(
       poweredByHeader: false,
       reactStrictMode: true,
       serverExternalPackages: ['@electric-sql/pglite', 'pg'],
-      turbopack: {
-        root: process.cwd(),
-        },
-      webpack: (config, { isServer }) => {
-        if (!isServer) {
-          // Add polyfills for browser builds
-          config.resolve.fallback = {
-            ...config.resolve.fallback,
-            fs: false,
-            net: false,
-            tls: false,
-            dns: false,
-          }
-        }
-        return config
-      },
     })
   ),
   {
@@ -66,7 +50,7 @@ export default withSentryConfig(
     
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     webpack: {
-      treeshake: {
+      treeShake: {
         removeDebugLogging: true,
         },
       automaticVercelMonitors: true,

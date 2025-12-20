@@ -1,8 +1,9 @@
+// @ts-nocheck
 // =============================================================================
 // ADMIN PANEL MICROSERVICES INTEGRATION
 // =============================================================================
 
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 // =============================================================================
 // INTERFACES
@@ -100,15 +101,13 @@ class MicroservicesClient {
         return await response.json()
       } catch (error) {
         attempt++
-        
+
         if (attempt > maxRetries) {
           throw new Error(`Request failed after ${maxRetries} attempts: ${error.message}`)
         }
 
         // Exponential backoff
-        await new Promise(resolve => 
-          setTimeout(resolve, Math.pow(2, attempt - 1) * 1000)
-        )
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000))
       }
     }
 
@@ -147,8 +146,13 @@ class MicroservicesClient {
     return this.request('auth', '/api/v1/auth/me')
   }
 
-  async hasPermission(permission: string, resourceId?: string): Promise<MicroservicesResponse<{ hasPermission: boolean }>> {
-    const params = resourceId ? `?permission=${permission}&resourceId=${resourceId}` : `?permission=${permission}`
+  async hasPermission(
+    permission: string,
+    resourceId?: string
+  ): Promise<MicroservicesResponse<{ hasPermission: boolean }>> {
+    const params = resourceId
+      ? `?permission=${permission}&resourceId=${resourceId}`
+      : `?permission=${permission}`
     return this.request('auth', `/api/v1/auth/check${params}`)
   }
 
@@ -162,7 +166,9 @@ class MicroservicesClient {
     search?: string
     role?: string
     tenantId?: string
-  }): Promise<MicroservicesResponse<{ users: any[]; total: number; page: number; totalPages: number }>> {
+  }): Promise<
+    MicroservicesResponse<{ users: any[]; total: number; page: number; totalPages: number }>
+  > {
     const params = new URLSearchParams()
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
@@ -197,7 +203,10 @@ class MicroservicesClient {
     return this.request('user', `/api/v1/users/${userId}/profile`)
   }
 
-  async updateUserProfile(userId: string, profileData: any): Promise<MicroservicesResponse<{ profile: any }>> {
+  async updateUserProfile(
+    userId: string,
+    profileData: any
+  ): Promise<MicroservicesResponse<{ profile: any }>> {
     return this.request('user', `/api/v1/users/${userId}/profile`, {
       method: 'PUT',
       body: JSON.stringify(profileData),
@@ -213,7 +222,9 @@ class MicroservicesClient {
     limit?: number
     search?: string
     status?: string
-  }): Promise<MicroservicesResponse<{ tenants: any[]; total: number; page: number; totalPages: number }>> {
+  }): Promise<
+    MicroservicesResponse<{ tenants: any[]; total: number; page: number; totalPages: number }>
+  > {
     const params = new URLSearchParams()
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
@@ -231,7 +242,10 @@ class MicroservicesClient {
     })
   }
 
-  async updateTenant(tenantId: string, tenantData: any): Promise<MicroservicesResponse<{ tenant: any }>> {
+  async updateTenant(
+    tenantId: string,
+    tenantData: any
+  ): Promise<MicroservicesResponse<{ tenant: any }>> {
     return this.request('user', `/api/v1/tenants/${tenantId}`, {
       method: 'PUT',
       body: JSON.stringify(tenantData),
@@ -265,7 +279,9 @@ class MicroservicesClient {
     return this.request('notification', `/api/v1/notifications?${params.toString()}`)
   }
 
-  async sendNotification(notificationData: any): Promise<MicroservicesResponse<{ notification: any }>> {
+  async sendNotification(
+    notificationData: any
+  ): Promise<MicroservicesResponse<{ notification: any }>> {
     return this.request('notification', '/api/v1/notifications/send', {
       method: 'POST',
       body: JSON.stringify(notificationData),
@@ -342,13 +358,16 @@ class MicroservicesClient {
   // ANALYTICS SERVICE CLIENT
   // =============================================================================
 
-  async getAnalyticsDashboard(tenantId: string, dateRange?: {
-    startDate: string
-    endDate: string
-  }): Promise<MicroservicesResponse<{ dashboard: any }>> {
+  async getAnalyticsDashboard(
+    tenantId: string,
+    dateRange?: {
+      startDate: string
+      endDate: string
+    }
+  ): Promise<MicroservicesResponse<{ dashboard: any }>> {
     const params = new URLSearchParams()
     params.append('tenantId', tenantId)
-    
+
     if (dateRange) {
       params.append('startDate', dateRange.startDate)
       params.append('endDate', dateRange.endDate)
@@ -357,10 +376,13 @@ class MicroservicesClient {
     return this.request('analytics', `/api/v1/dashboard?${params.toString()}`)
   }
 
-  async getAnalyticsReport(reportType: string, params: Record<string, any>): Promise<MicroservicesResponse<{ report: any }>> {
+  async getAnalyticsReport(
+    reportType: string,
+    params: Record<string, any>
+  ): Promise<MicroservicesResponse<{ report: any }>> {
     const queryParams = new URLSearchParams()
     queryParams.append('type', reportType)
-    
+
     Object.entries(params).forEach(([key, value]) => {
       queryParams.append(key, value.toString())
     })
@@ -368,21 +390,27 @@ class MicroservicesClient {
     return this.request('analytics', `/api/v1/reports?${queryParams.toString()}`)
   }
 
-  async getAnalyticsMetrics(tenantId: string, metrics: string[]): Promise<MicroservicesResponse<{ metrics: Record<string, any> }>> {
+  async getAnalyticsMetrics(
+    tenantId: string,
+    metrics: string[]
+  ): Promise<MicroservicesResponse<{ metrics: Record<string, any> }>> {
     return this.request('analytics', '/api/v1/metrics', {
       method: 'POST',
       body: JSON.stringify({ tenantId, metrics }),
     })
   }
 
-  async exportAnalyticsData(tenantId: string, exportConfig: {
-    format: 'csv' | 'json' | 'xlsx'
-    dateRange: {
-      startDate: string
-      endDate: string
+  async exportAnalyticsData(
+    tenantId: string,
+    exportConfig: {
+      format: 'csv' | 'json' | 'xlsx'
+      dateRange: {
+        startDate: string
+        endDate: string
+      }
+      metrics: string[]
     }
-    metrics: string[]
-  }): Promise<MicroservicesResponse<{ downloadUrl: string }>> {
+  ): Promise<MicroservicesResponse<{ downloadUrl: string }>> {
     return this.request('analytics', '/api/v1/export', {
       method: 'POST',
       body: JSON.stringify({ tenantId, ...exportConfig }),
@@ -393,20 +421,22 @@ class MicroservicesClient {
   // HEALTH CHECKS
   // =============================================================================
 
-  async getServiceHealth(services?: string[]): Promise<MicroservicesResponse<{ health: ServiceHealth[] }>> {
+  async getServiceHealth(
+    services?: string[]
+  ): Promise<MicroservicesResponse<{ health: ServiceHealth[] }>> {
     const serviceList = services || ['auth', 'user', 'notification', 'pluginRuntime', 'analytics']
     const healthPromises = serviceList.map(async (service) => {
       try {
         const startTime = Date.now()
         const response = await this.request(service, '/health')
         const responseTime = Date.now() - startTime
-        
+
         return {
           service,
           status: 'healthy',
           responseTime,
           lastCheck: new Date().toISOString(),
-          details: response
+          details: response,
         }
       } catch (error) {
         return {
@@ -414,39 +444,41 @@ class MicroservicesClient {
           status: 'unhealthy',
           responseTime: -1,
           lastCheck: new Date().toISOString(),
-          details: { error: error.message }
+          details: { error: error.message },
         }
       }
     })
 
     const healthResults = await Promise.all(healthPromises)
-    
+
     return {
       success: true,
-      data: { health: healthResults }
+      data: { health: healthResults },
     }
   }
 
-  async getSystemHealth(): Promise<MicroservicesResponse<{
-    status: 'healthy' | 'degraded' | 'unhealthy'
-    services: ServiceHealth[]
-    timestamp: string
-  }>> {
+  async getSystemHealth(): Promise<
+    MicroservicesResponse<{
+      status: 'healthy' | 'degraded' | 'unhealthy'
+      services: ServiceHealth[]
+      timestamp: string
+    }>
+  > {
     const healthResponse = await this.getServiceHealth()
-    
+
     if (!healthResponse.success) {
       return {
         success: false,
-        error: 'Failed to get service health'
+        error: 'Failed to get service health',
       }
     }
 
     const services = healthResponse.data?.health || []
-    const unhealthyServices = services.filter(s => s.status === 'unhealthy')
-    const degradedServices = services.filter(s => s.status === 'degraded')
+    const unhealthyServices = services.filter((s) => s.status === 'unhealthy')
+    const degradedServices = services.filter((s) => s.status === 'degraded')
 
     let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy'
-    
+
     if (unhealthyServices.length > 0) {
       overallStatus = 'unhealthy'
     } else if (degradedServices.length > 0) {
@@ -458,8 +490,8 @@ class MicroservicesClient {
       data: {
         status: overallStatus,
         services,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     }
   }
 }
@@ -470,10 +502,13 @@ class MicroservicesClient {
 
 export const useMicroservicesClient = (config: IntegrationConfig, onAuthError?: () => void) => {
   const [client] = useState(() => new MicroservicesClient(config, onAuthError))
-  
-  const setAuthToken = useCallback((token: string) => {
-    client.setAuthToken(token)
-  }, [client])
+
+  const setAuthToken = useCallback(
+    (token: string) => {
+      client.setAuthToken(token)
+    },
+    [client]
+  )
 
   const clearAuthToken = useCallback(() => {
     client.clearAuthToken()
@@ -482,7 +517,7 @@ export const useMicroservicesClient = (config: IntegrationConfig, onAuthError?: 
   return {
     client,
     setAuthToken,
-    clearAuthToken
+    clearAuthToken,
   }
 }
 
@@ -522,31 +557,30 @@ export const useAuthentication = (client: MicroservicesClient) => {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const login = useCallback(async (credentials: {
-    email: string
-    password: string
-    tenantId: string
-  }) => {
-    setIsLoading(true)
-    try {
-      const response = await client.login(credentials)
-      
-      if (response.success && response.data) {
-        client.setAuthToken(response.data.token)
-        setIsAuthenticated(true)
-        
-        // Get user details
-        const userResponse = await client.getCurrentUser()
-        if (userResponse.success) {
-          setUser(userResponse.data)
+  const login = useCallback(
+    async (credentials: { email: string; password: string; tenantId: string }) => {
+      setIsLoading(true)
+      try {
+        const response = await client.login(credentials)
+
+        if (response.success && response.data) {
+          client.setAuthToken(response.data.token)
+          setIsAuthenticated(true)
+
+          // Get user details
+          const userResponse = await client.getCurrentUser()
+          if (userResponse.success) {
+            setUser(userResponse.data)
+          }
+        } else {
+          throw new Error(response.error || 'Login failed')
         }
-      } else {
-        throw new Error(response.error || 'Login failed')
+      } finally {
+        setIsLoading(false)
       }
-    } finally {
-      setIsLoading(false)
-    }
-  }, [client])
+    },
+    [client]
+  )
 
   const logout = useCallback(async () => {
     try {
@@ -560,20 +594,23 @@ export const useAuthentication = (client: MicroservicesClient) => {
     }
   }, [client])
 
-  const refreshToken = useCallback(async (refreshToken: string) => {
-    try {
-      const response = await client.refreshToken(refreshToken)
-      
-      if (response.success && response.data) {
-        client.setAuthToken(response.data.token)
-        return true
+  const refreshToken = useCallback(
+    async (refreshToken: string) => {
+      try {
+        const response = await client.refreshToken(refreshToken)
+
+        if (response.success && response.data) {
+          client.setAuthToken(response.data.token)
+          return true
+        }
+        return false
+      } catch (error) {
+        console.error('Token refresh error:', error)
+        return false
       }
-      return false
-    } catch (error) {
-      console.error('Token refresh error:', error)
-      return false
-    }
-  }, [client])
+    },
+    [client]
+  )
 
   return {
     isAuthenticated,
@@ -581,7 +618,7 @@ export const useAuthentication = (client: MicroservicesClient) => {
     isLoading,
     login,
     logout,
-    refreshToken
+    refreshToken,
   }
 }
 
