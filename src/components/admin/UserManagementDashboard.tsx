@@ -1,14 +1,14 @@
 'use client'
 
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 
 const CreateUserFormSchema = z.object({
   tenantId: z.string().min(1, 'Tenant is required'),
@@ -27,12 +27,7 @@ interface CreateUserDialogProps {
   tenants: Array<{ id: string; name: string; slug: string }>
 }
 
-export function CreateUserDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  tenants,
-}: CreateUserDialogProps) {
+export function CreateUserDialog({ open, onOpenChange, onSubmit, tenants }: CreateUserDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<CreateUserFormData>({
@@ -58,72 +53,51 @@ export function CreateUserDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
-        className="fixed inset-0 bg-black/50" 
-        onClick={() => onOpenChange(false)}
-      />
-      <div className="relative z-50 w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg">
-        <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <h2 className="text-lg font-semibold leading-none tracking-tight">
-            Create New User
-          </h2>
-          <p className="text-sm text-muted-foreground">
+    <div className='fixed inset-0 z-50 flex items-center justify-center'>
+      <div className='fixed inset-0 bg-black/50' onClick={() => onOpenChange(false)} />
+      <div className='relative z-50 w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg'>
+        <div className='flex flex-col space-y-1.5 text-center sm:text-left'>
+          <h2 className='text-lg font-semibold leading-none tracking-tight'>Create New User</h2>
+          <p className='text-sm text-muted-foreground'>
             Add a new user to the system. They will receive an email invitation.
           </p>
         </div>
 
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 mt-6">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6 mt-6'>
+          <div className='space-y-4'>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <label className="text-sm font-medium">First Name</label>
-                <Input
-                  placeholder="Enter first name"
-                  {...form.register('firstName')}
-                />
+                <label className='text-sm font-medium'>First Name</label>
+                <Input placeholder='Enter first name' {...form.register('firstName')} />
                 {form.formState.errors.firstName && (
-                  <p className="text-sm text-red-500">
-                    {form.formState.errors.firstName.message}
-                  </p>
+                  <p className='text-sm text-red-500'>{form.formState.errors.firstName.message}</p>
                 )}
               </div>
 
               <div>
-                <label className="text-sm font-medium">Last Name</label>
-                <Input
-                  placeholder="Enter last name"
-                  {...form.register('lastName')}
-                />
+                <label className='text-sm font-medium'>Last Name</label>
+                <Input placeholder='Enter last name' {...form.register('lastName')} />
                 {form.formState.errors.lastName && (
-                  <p className="text-sm text-red-500">
-                    {form.formState.errors.lastName.message}
-                  </p>
+                  <p className='text-sm text-red-500'>{form.formState.errors.lastName.message}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="text-sm font-medium">Email Address</label>
-              <Input
-                type="email"
-                placeholder="Enter email address"
-                {...form.register('email')}
-              />
+              <label className='text-sm font-medium'>Email Address</label>
+              <Input type='email' placeholder='Enter email address' {...form.register('email')} />
               {form.formState.errors.email && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.email.message}
-                </p>
+                <p className='text-sm text-red-500'>{form.formState.errors.email.message}</p>
               )}
             </div>
 
             <div>
-              <label className="text-sm font-medium">Tenant</label>
+              <label className='text-sm font-medium'>Tenant</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
                 {...form.register('tenantId')}
               >
-                <option value="">Select tenant</option>
+                <option value=''>Select tenant</option>
                 {tenants.map((tenant) => (
                   <option key={tenant.id} value={tenant.id}>
                     {tenant.name} ({tenant.slug})
@@ -131,38 +105,30 @@ export function CreateUserDialog({
                 ))}
               </select>
               {form.formState.errors.tenantId && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.tenantId.message}
-                </p>
+                <p className='text-sm text-red-500'>{form.formState.errors.tenantId.message}</p>
               )}
             </div>
 
             <div>
-              <label className="text-sm font-medium">Status</label>
+              <label className='text-sm font-medium'>Status</label>
               <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
                 {...form.register('status')}
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value='active'>Active</option>
+                <option value='inactive'>Inactive</option>
               </select>
               {form.formState.errors.status && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.status.message}
-                </p>
+                <p className='text-sm text-red-500'>{form.formState.errors.status.message}</p>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+          <div className='flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2'>
+            <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type='submit' disabled={isSubmitting}>
               {isSubmitting ? 'Creating User...' : 'Create User'}
             </Button>
           </div>
@@ -208,12 +174,10 @@ export function UserManagementDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">User Management</h2>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          Add User
-        </Button>
+    <div className='space-y-6'>
+      <div className='flex items-center justify-between'>
+        <h2 className='text-2xl font-bold'>User Management</h2>
+        <Button onClick={() => setShowCreateDialog(true)}>Add User</Button>
       </div>
 
       <Card>
@@ -221,8 +185,8 @@ export function UserManagementDashboard() {
           <CardTitle>Users ({users.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <div className="grid grid-cols-6 border-b bg-muted/50 p-3 text-sm font-medium">
+          <div className='rounded-md border'>
+            <div className='grid grid-cols-6 border-b bg-muted/50 p-3 text-sm font-medium'>
               <div>Name</div>
               <div>Email</div>
               <div>Status</div>
@@ -231,8 +195,8 @@ export function UserManagementDashboard() {
               <div>Created</div>
             </div>
             {users.map((user) => (
-              <div key={user.id} className="grid grid-cols-6 border-b p-3 text-sm">
-                <div className="font-medium">
+              <div key={user.id} className='grid grid-cols-6 border-b p-3 text-sm'>
+                <div className='font-medium'>
                   {user.firstName} {user.lastName}
                 </div>
                 <div>{user.email}</div>

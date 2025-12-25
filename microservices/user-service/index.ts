@@ -2,12 +2,12 @@
 // USER MANAGEMENT SERVICE MICROSERVICE
 // =============================================================================
 
-import express from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
-import compression from 'compression'
-import rateLimit from 'express-rate-limit'
 import bcrypt from 'bcryptjs'
+import compression from 'compression'
+import cors from 'cors'
+import express from 'express'
+import rateLimit from 'express-rate-limit'
+import helmet from 'helmet'
 import { createClient } from 'redis'
 
 // =============================================================================
@@ -105,7 +105,7 @@ class UserManagementService {
     this.app = express()
     this.PORT = parseInt(process.env.PORT || '3004')
     this.AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3003'
-    
+
     this.initializeMiddleware()
     this.initializeRoutes()
     this.initializeDefaultRoles()
@@ -113,15 +113,17 @@ class UserManagementService {
 
   private async initializeMiddleware() {
     this.app.use(helmet())
-    this.app.use(cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-      credentials: true
-    }))
+    this.app.use(
+      cors({
+        origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+        credentials: true,
+      })
+    )
 
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 100,
-      message: { error: 'Too many requests from this IP' }
+      message: { error: 'Too many requests from this IP' },
     })
     this.app.use('/api/', limiter)
 
@@ -140,17 +142,65 @@ class UserManagementService {
   private initializeDefaultRoles() {
     // Default permissions
     const defaultPermissions: Permission[] = [
-      { id: 'users.read', name: 'Read Users', resource: 'users', action: 'read', description: 'View user information' },
-      { id: 'users.write', name: 'Write Users', resource: 'users', action: 'write', description: 'Create and update users' },
-      { id: 'users.delete', name: 'Delete Users', resource: 'users', action: 'delete', description: 'Delete user accounts' },
-      { id: 'roles.read', name: 'Read Roles', resource: 'roles', action: 'read', description: 'View role information' },
-      { id: 'roles.write', name: 'Write Roles', resource: 'roles', action: 'write', description: 'Create and update roles' },
-      { id: 'analytics.read', name: 'Read Analytics', resource: 'analytics', action: 'read', description: 'View analytics data' },
-      { id: 'plugins.read', name: 'Read Plugins', resource: 'plugins', action: 'read', description: 'View plugin information' },
-      { id: 'plugins.write', name: 'Write Plugins', resource: 'plugins', action: 'write', description: 'Install and manage plugins' },
+      {
+        id: 'users.read',
+        name: 'Read Users',
+        resource: 'users',
+        action: 'read',
+        description: 'View user information',
+      },
+      {
+        id: 'users.write',
+        name: 'Write Users',
+        resource: 'users',
+        action: 'write',
+        description: 'Create and update users',
+      },
+      {
+        id: 'users.delete',
+        name: 'Delete Users',
+        resource: 'users',
+        action: 'delete',
+        description: 'Delete user accounts',
+      },
+      {
+        id: 'roles.read',
+        name: 'Read Roles',
+        resource: 'roles',
+        action: 'read',
+        description: 'View role information',
+      },
+      {
+        id: 'roles.write',
+        name: 'Write Roles',
+        resource: 'roles',
+        action: 'write',
+        description: 'Create and update roles',
+      },
+      {
+        id: 'analytics.read',
+        name: 'Read Analytics',
+        resource: 'analytics',
+        action: 'read',
+        description: 'View analytics data',
+      },
+      {
+        id: 'plugins.read',
+        name: 'Read Plugins',
+        resource: 'plugins',
+        action: 'read',
+        description: 'View plugin information',
+      },
+      {
+        id: 'plugins.write',
+        name: 'Write Plugins',
+        resource: 'plugins',
+        action: 'write',
+        description: 'Install and manage plugins',
+      },
     ]
 
-    defaultPermissions.forEach(permission => {
+    defaultPermissions.forEach((permission) => {
       this.permissions.set(permission.id, permission)
     })
 
@@ -160,10 +210,10 @@ class UserManagementService {
         id: 'super_admin',
         name: 'Super Admin',
         description: 'Full system access',
-        permissions: defaultPermissions.map(p => p.id),
+        permissions: defaultPermissions.map((p) => p.id),
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'admin',
@@ -172,7 +222,7 @@ class UserManagementService {
         permissions: ['users.read', 'users.write', 'roles.read', 'analytics.read', 'plugins.read'],
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'user',
@@ -181,7 +231,7 @@ class UserManagementService {
         permissions: ['users.read'],
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'viewer',
@@ -190,16 +240,20 @@ class UserManagementService {
         permissions: ['users.read', 'analytics.read'],
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ]
 
-    defaultRoles.forEach(role => {
+    defaultRoles.forEach((role) => {
       this.roles.set(role.id, role)
     })
   }
 
-  private async authenticateRequest(req: express.Request, res: express.Response, next: express.NextFunction) {
+  private async authenticateRequest(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) {
     try {
       const authHeader = req.headers.authorization
       if (!authHeader?.startsWith('Bearer ')) {
@@ -207,10 +261,10 @@ class UserManagementService {
       }
 
       const token = authHeader.substring(7)
-      
+
       // Verify token with auth service
       const response = await fetch(`${this.AUTH_SERVICE_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
 
       if (!response.ok) {
@@ -245,8 +299,8 @@ class UserManagementService {
         metrics: {
           totalUsers: this.users.size,
           totalRoles: this.roles.size,
-          totalPermissions: this.permissions.size
-        }
+          totalPermissions: this.permissions.size,
+        },
       })
     })
 
@@ -258,14 +312,16 @@ class UserManagementService {
     this.app.post('/api/users', async (req: express.Request, res: express.Response) => {
       try {
         const createUserReq: CreateUserRequest = req.body
-        
+
         // Validate required fields
         if (!createUserReq.email || !createUserReq.password || !createUserReq.name) {
           return res.status(400).json({ error: 'Email, password, and name are required' })
         }
 
         // Check if user already exists
-        const existingUser = Array.from(this.users.values()).find(u => u.email === createUserReq.email)
+        const existingUser = Array.from(this.users.values()).find(
+          (u) => u.email === createUserReq.email
+        )
         if (existingUser) {
           return res.status(409).json({ error: 'User with this email already exists' })
         }
@@ -286,24 +342,24 @@ class UserManagementService {
             firstName: createUserReq.profile?.firstName,
             lastName: createUserReq.profile?.lastName,
             timezone: createUserReq.profile?.timezone || 'UTC',
-            language: createUserReq.profile?.language || 'en'
+            language: createUserReq.profile?.language || 'en',
           },
           preferences: {
             theme: 'light',
             notifications: {
               email: true,
               push: true,
-              sms: false
+              sms: false,
             },
             privacy: {
               profileVisibility: 'public',
               showEmail: false,
-              showPhone: false
+              showPhone: false,
             },
-            ...createUserReq.preferences
+            ...createUserReq.preferences,
           },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
 
         this.users.set(user.id, user)
@@ -324,8 +380,8 @@ class UserManagementService {
             tenantId: user.tenantId,
             profile: user.profile,
             preferences: user.preferences,
-            createdAt: user.createdAt
-          }
+            createdAt: user.createdAt,
+          },
         })
       } catch (error) {
         console.error('Create user error:', error)
@@ -340,31 +396,33 @@ class UserManagementService {
         const limit = parseInt(req.query.limit as string) || 20
         const search = req.query.search as string
         const role = req.query.role as string
-        const isActive = req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined
+        const isActive =
+          req.query.active === 'true' ? true : req.query.active === 'false' ? false : undefined
         const tenantId = req.query.tenantId as string
 
         let users = Array.from(this.users.values())
 
         // Apply filters
         if (search) {
-          users = users.filter(user => 
-            user.name.toLowerCase().includes(search.toLowerCase()) ||
-            user.email.toLowerCase().includes(search.toLowerCase()) ||
-            user.profile.firstName?.toLowerCase().includes(search.toLowerCase()) ||
-            user.profile.lastName?.toLowerCase().includes(search.toLowerCase())
+          users = users.filter(
+            (user) =>
+              user.name.toLowerCase().includes(search.toLowerCase()) ||
+              user.email.toLowerCase().includes(search.toLowerCase()) ||
+              user.profile.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+              user.profile.lastName?.toLowerCase().includes(search.toLowerCase())
           )
         }
 
         if (role) {
-          users = users.filter(user => user.role === role)
+          users = users.filter((user) => user.role === role)
         }
 
         if (isActive !== undefined) {
-          users = users.filter(user => user.isActive === isActive)
+          users = users.filter((user) => user.isActive === isActive)
         }
 
         if (tenantId) {
-          users = users.filter(user => user.tenantId === tenantId)
+          users = users.filter((user) => user.tenantId === tenantId)
         }
 
         // Sort by created date
@@ -376,7 +434,7 @@ class UserManagementService {
         const paginatedUsers = users.slice(startIndex, endIndex)
 
         res.json({
-          users: paginatedUsers.map(user => ({
+          users: paginatedUsers.map((user) => ({
             id: user.id,
             email: user.email,
             name: user.name,
@@ -388,7 +446,7 @@ class UserManagementService {
             preferences: user.preferences,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            lastLoginAt: user.lastLoginAt
+            lastLoginAt: user.lastLoginAt,
           })),
           pagination: {
             page,
@@ -396,8 +454,8 @@ class UserManagementService {
             total: users.length,
             totalPages: Math.ceil(users.length / limit),
             hasNext: endIndex < users.length,
-            hasPrev: page > 1
-          }
+            hasPrev: page > 1,
+          },
         })
       } catch (error) {
         console.error('Get users error:', error)
@@ -428,8 +486,8 @@ class UserManagementService {
             preferences: user.preferences,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            lastLoginAt: user.lastLoginAt
-          }
+            lastLoginAt: user.lastLoginAt,
+          },
         })
       } catch (error) {
         console.error('Get user error:', error)
@@ -484,8 +542,8 @@ class UserManagementService {
             preferences: user.preferences,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
-            lastLoginAt: user.lastLoginAt
-          }
+            lastLoginAt: user.lastLoginAt,
+          },
         })
       } catch (error) {
         console.error('Update user error:', error)
@@ -524,9 +582,9 @@ class UserManagementService {
     // Get all roles
     this.app.get('/api/roles', async (req: express.Request, res: express.Response) => {
       try {
-        const roles = Array.from(this.roles.values()).map(role => ({
+        const roles = Array.from(this.roles.values()).map((role) => ({
           ...role,
-          permissions: role.permissions.map(permId => this.permissions.get(permId))
+          permissions: role.permissions.map((permId) => this.permissions.get(permId)),
         }))
 
         res.json({ roles })
@@ -552,7 +610,7 @@ class UserManagementService {
           permissions,
           isActive: true,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
 
         this.roles.set(role.id, role)
@@ -577,23 +635,26 @@ class UserManagementService {
         }
 
         const users = Array.from(this.users.values())
-        const searchResults = users.filter(user => 
-          user.name.toLowerCase().includes(query.toLowerCase()) ||
-          user.email.toLowerCase().includes(query.toLowerCase()) ||
-          user.profile.firstName?.toLowerCase().includes(query.toLowerCase()) ||
-          user.profile.lastName?.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 20) // Limit to 20 results
+        const searchResults = users
+          .filter(
+            (user) =>
+              user.name.toLowerCase().includes(query.toLowerCase()) ||
+              user.email.toLowerCase().includes(query.toLowerCase()) ||
+              user.profile.firstName?.toLowerCase().includes(query.toLowerCase()) ||
+              user.profile.lastName?.toLowerCase().includes(query.toLowerCase())
+          )
+          .slice(0, 20) // Limit to 20 results
 
         res.json({
           query,
-          results: searchResults.map(user => ({
+          results: searchResults.map((user) => ({
             id: user.id,
             name: user.name,
             email: user.email,
             profile: user.profile,
-            role: user.role
+            role: user.role,
           })),
-          total: searchResults.length
+          total: searchResults.length,
         })
       } catch (error) {
         console.error('Search users error:', error)
@@ -605,16 +666,18 @@ class UserManagementService {
     // ERROR HANDLING
     // =============================================================================
 
-    this.app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('Unhandled error:', err)
-      res.status(500).json({
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
-      })
-    })
+    this.app.use(
+      (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        console.error('Unhandled error:', err)
+        res.status(500).json({
+          error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+        })
+      }
+    )
 
     // 404 handler
     this.app.use('*', (req: express.Request, res: express.Response) => {
-      res.status(404).json({ 
+      res.status(404).json({
         error: 'Route not found',
         availableEndpoints: [
           'GET /health',
@@ -625,8 +688,8 @@ class UserManagementService {
           'DELETE /api/users/:id',
           'GET /api/roles',
           'POST /api/roles',
-          'GET /api/search/users'
-        ]
+          'GET /api/search/users',
+        ],
       })
     })
   }
@@ -646,23 +709,23 @@ class UserManagementService {
           firstName: 'System',
           lastName: 'Administrator',
           timezone: 'UTC',
-          language: 'en'
+          language: 'en',
         },
         preferences: {
           theme: 'dark',
           notifications: {
             email: true,
             push: true,
-            sms: false
+            sms: false,
           },
           privacy: {
             profileVisibility: 'public',
             showEmail: false,
-            showPhone: false
-          }
+            showPhone: false,
+          },
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
       this.users.set(adminUser.id, adminUser)
 
@@ -691,16 +754,16 @@ class UserManagementService {
 
 async function startUserService() {
   const userService = new UserManagementService()
-  
+
   await userService.start()
-  
+
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received, shutting down gracefully')
     await userService.stop()
     process.exit(0)
   })
-  
+
   process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received, shutting down gracefully')
     await userService.stop()

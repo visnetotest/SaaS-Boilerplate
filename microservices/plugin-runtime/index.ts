@@ -2,12 +2,12 @@
 // PLUGIN RUNTIME SERVICE (SIMPLIFIED FOR PRODUCTION)
 // =============================================================================
 
-import express from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
 import compression from 'compression'
+import cors from 'cors'
+import express from 'express'
 import rateLimit from 'express-rate-limit'
 import fs from 'fs'
+import helmet from 'helmet'
 import path from 'path'
 
 // =============================================================================
@@ -59,7 +59,7 @@ class SimplifiedPluginRuntime {
     this.app = express()
     this.PORT = parseInt(process.env.PORT || '4000')
     this.pluginsDirectory = process.env.PLUGINS_DIRECTORY || './plugins'
-    
+
     this.initializeMiddleware()
     this.initializeRoutes()
     this.loadExistingPlugins()
@@ -67,15 +67,17 @@ class SimplifiedPluginRuntime {
 
   private initializeMiddleware() {
     this.app.use(helmet())
-    this.app.use(cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-      credentials: true
-    }))
+    this.app.use(
+      cors({
+        origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+        credentials: true,
+      })
+    )
 
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 100,
-      message: { error: 'Too many requests from this IP' }
+      message: { error: 'Too many requests from this IP' },
     })
     this.app.use('/api/', limiter)
 
@@ -95,10 +97,13 @@ class SimplifiedPluginRuntime {
         uptime: process.uptime(),
         metrics: {
           totalPlugins: this.plugins.size,
-          activePlugins: Array.from(this.plugins.values()).filter(p => p.status === 'active').length,
-          inactivePlugins: Array.from(this.plugins.values()).filter(p => p.status === 'inactive').length,
-          errorPlugins: Array.from(this.plugins.values()).filter(p => p.status === 'error').length
-        }
+          activePlugins: Array.from(this.plugins.values()).filter((p) => p.status === 'active')
+            .length,
+          inactivePlugins: Array.from(this.plugins.values()).filter((p) => p.status === 'inactive')
+            .length,
+          errorPlugins: Array.from(this.plugins.values()).filter((p) => p.status === 'error')
+            .length,
+        },
       })
     })
 
@@ -114,13 +119,13 @@ class SimplifiedPluginRuntime {
 
         // Apply filters
         if (status) {
-          plugins = plugins.filter(p => p.status === status)
+          plugins = plugins.filter((p) => p.status === status)
         }
         if (category) {
-          plugins = plugins.filter(p => p.category === category)
+          plugins = plugins.filter((p) => p.category === category)
         }
         if (author) {
-          plugins = plugins.filter(p => p.author === author)
+          plugins = plugins.filter((p) => p.author === author)
         }
 
         res.json({ plugins })
@@ -166,7 +171,7 @@ class SimplifiedPluginRuntime {
           category: 'General',
           status: 'inactive',
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
 
         this.plugins.set(plugin.id, plugin)
@@ -204,9 +209,9 @@ class SimplifiedPluginRuntime {
           res.json({ plugin, executionResult })
         } else {
           plugin.status = 'error'
-          res.status(500).json({ 
+          res.status(500).json({
             error: 'Failed to activate plugin',
-            details: executionResult.error
+            details: executionResult.error,
           })
         }
       } catch (error) {
@@ -297,16 +302,18 @@ class SimplifiedPluginRuntime {
     // ERROR HANDLING
     // =============================================================================
 
-    this.app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      console.error('Unhandled error:', err)
-      res.status(500).json({
-        error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
-      })
-    })
+    this.app.use(
+      (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        console.error('Unhandled error:', err)
+        res.status(500).json({
+          error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+        })
+      }
+    )
 
     // 404 handler
     this.app.use('*', (req: express.Request, res: express.Response) => {
-      res.status(404).json({ 
+      res.status(404).json({
         error: 'Route not found',
         availableEndpoints: [
           'GET /health',
@@ -316,21 +323,24 @@ class SimplifiedPluginRuntime {
           'POST /api/plugins/:id/activate',
           'POST /api/plugins/:id/deactivate',
           'DELETE /api/plugins/:id',
-          'POST /api/plugins/:id/execute'
-        ]
+          'POST /api/plugins/:id/execute',
+        ],
       })
     })
   }
 
-  private async executePlugin(plugin: Plugin, options: { action: string, parameters?: any }): Promise<PluginExecutionResult> {
+  private async executePlugin(
+    plugin: Plugin,
+    options: { action: string; parameters?: any }
+  ): Promise<PluginExecutionResult> {
     const startTime = Date.now()
 
     try {
       console.log(`Executing plugin ${plugin.name} with action: ${options.action}`)
-      
+
       // Simulate plugin execution
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
       const executionTime = Date.now() - startTime
 
       // Simulate different outcomes based on action
@@ -339,19 +349,19 @@ class SimplifiedPluginRuntime {
           return {
             success: true,
             output: `Plugin ${plugin.name} activated successfully`,
-            executionTime
+            executionTime,
           }
         case 'deactivate':
           return {
             success: true,
             output: `Plugin ${plugin.name} deactivated successfully`,
-            executionTime
+            executionTime,
           }
         default:
           return {
             success: true,
             output: `Executed ${options.action} on plugin ${plugin.name}`,
-            executionTime
+            executionTime,
           }
       }
     } catch (error) {
@@ -359,7 +369,7 @@ class SimplifiedPluginRuntime {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        executionTime
+        executionTime,
       }
     }
   }
@@ -367,7 +377,7 @@ class SimplifiedPluginRuntime {
   private loadExistingPlugins() {
     try {
       console.log('Loading existing plugins from:', this.pluginsDirectory)
-      
+
       // Create plugins directory if it doesn't exist
       if (!fs.existsSync(this.pluginsDirectory)) {
         fs.mkdirSync(this.pluginsDirectory, { recursive: true })
@@ -375,18 +385,19 @@ class SimplifiedPluginRuntime {
       }
 
       // Load plugin directories
-      const pluginDirs = fs.readdirSync(this.pluginsDirectory, { withFileTypes: true })
-        .filter(entry => entry.isDirectory())
-        .map(entry => entry.name)
+      const pluginDirs = fs
+        .readdirSync(this.pluginsDirectory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)
 
       for (const pluginDir of pluginDirs) {
         try {
           const manifestPath = path.join(this.pluginsDirectory, pluginDir, 'plugin.json')
-          
+
           if (fs.existsSync(manifestPath)) {
             const manifestData = fs.readFileSync(manifestPath, 'utf8')
             const manifest: PluginManifest = JSON.parse(manifestData)
-            
+
             const plugin: Plugin = {
               id: pluginDir,
               name: manifest.name,
@@ -396,9 +407,9 @@ class SimplifiedPluginRuntime {
               category: manifest.category,
               status: 'inactive',
               createdAt: new Date(),
-              updatedAt: new Date()
+              updatedAt: new Date(),
             }
-            
+
             this.plugins.set(plugin.id, plugin)
             console.log(`Loaded plugin: ${plugin.name} v${plugin.version}`)
           }
@@ -436,13 +447,13 @@ class SimplifiedPluginRuntime {
 async function startPluginRuntime() {
   const pluginRuntime = new SimplifiedPluginRuntime()
   await pluginRuntime.start()
-  
+
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('🛑 SIGTERM received, shutting down gracefully')
     process.exit(0)
   })
-  
+
   process.on('SIGINT', () => {
     console.log('🛑 SIGINT received, shutting down gracefully')
     process.exit(0)

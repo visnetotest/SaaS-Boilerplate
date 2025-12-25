@@ -2,11 +2,11 @@
 // SERVICE MESH IMPLEMENTATION
 // =============================================================================
 
+import axios from 'axios'
+import consul from 'consul'
+import { EventEmitter } from 'events'
 import express from 'express'
 import { createProxyMiddleware } from 'http-proxy-middleware'
-import consul from 'consul'
-import axios from 'axios'
-import { EventEmitter } from 'events'
 
 // =============================================================================
 // INTERFACES
@@ -59,7 +59,7 @@ class RoundRobinStrategy implements LoadBalancingStrategy {
   name = 'round_robin'
 
   select(instances: ServiceInstance[]): ServiceInstance | null {
-    const healthyInstances = instances.filter(i => i.health === 'healthy')
+    const healthyInstances = instances.filter((i) => i.health === 'healthy')
     if (healthyInstances.length === 0) return null
 
     const instance = healthyInstances[this.currentIndex % healthyInstances.length]
@@ -73,21 +73,21 @@ class WeightedRoundRobinStrategy implements LoadBalancingStrategy {
   name = 'weighted_round_robin'
 
   select(instances: ServiceInstance[]): ServiceInstance | null {
-    const healthyInstances = instances.filter(i => i.health === 'healthy')
+    const healthyInstances = instances.filter((i) => i.health === 'healthy')
     if (healthyInstances.length === 0) return null
 
     // Initialize weighted instances if needed
     if (this.weightedInstances.length === 0) {
-      this.weightedInstances = healthyInstances.map(instance => ({
+      this.weightedInstances = healthyInstances.map((instance) => ({
         instance,
-        weight: instance.weight || 1
+        weight: instance.weight || 1,
       }))
     }
 
     // Select based on weight
     let totalWeight = this.weightedInstances.reduce((sum, wi) => sum + wi.weight, 0)
     let random = Math.random() * totalWeight
-    
+
     for (const { instance, weight } of this.weightedInstances) {
       random -= weight
       if (random <= 0) {
@@ -103,7 +103,7 @@ class LeastConnectionsStrategy implements LoadBalancingStrategy {
   name = 'least_connections'
 
   select(instances: ServiceInstance[]): ServiceInstance | null {
-    const healthyInstances = instances.filter(i => i.health === 'healthy')
+    const healthyInstances = instances.filter((i) => i.health === 'healthy')
     if (healthyInstances.length === 0) return null
 
     return healthyInstances.reduce((min, current) => {
@@ -126,7 +126,7 @@ class ServiceDiscovery {
     this.consulClient = consul({
       host: consulHost,
       port: consulPort,
-      promisify: true
+      promisify: true,
     })
   }
 
@@ -139,8 +139,8 @@ class ServiceDiscovery {
       check: {
         http: `${service.protocol}://${service.host}:${service.port}/health`,
         interval: '10s',
-        timeout: '5s'
-      }
+        timeout: '5s',
+      },
     })
 
     // Update local cache
@@ -155,7 +155,7 @@ class ServiceDiscovery {
 
     // Update local cache
     for (const [serviceName, instances] of this.services.entries()) {
-      const filtered = instances.filter(i => i.id !== serviceId)
+      const filtered = instances.filter((i) => i.id !== serviceId)
       this.services.set(serviceName, filtered)
     }
   }
@@ -164,19 +164,19 @@ class ServiceDiscovery {
     try {
       const services = await this.consulClient.health.service({
         service: serviceName,
-        passing: true
+        passing: true,
       })
 
-      const instances: ServiceInstance[] = services.map(entry => ({
+      const instances: ServiceInstance[] = services.map((entry) => ({
         id: entry.Service.ID,
         name: entry.Service.Service,
         host: entry.Service.Address,
         port: entry.Service.Port,
         protocol: 'http',
-        health: entry.Checks.every(check => check.Status === 'passing') ? 'healthy' : 'unhealthy',
+        health: entry.Checks.every((check) => check.Status === 'passing') ? 'healthy' : 'unhealthy',
         metadata: entry.Service.Meta || {},
         lastHealthCheck: new Date(),
-        weight: 1
+        weight: 1,
       }))
 
       this.services.set(serviceName, instances)
@@ -216,7 +216,7 @@ class HealthChecker extends EventEmitter {
           `${service.protocol}://${service.host}:${service.port}/health`,
           { timeout: 5000 }
         )
-        
+
         const newHealth = response.status === 200 ? 'healthy' : 'unhealthy'
         if (service.health !== newHealth) {
           service.health = newHealth
@@ -306,7 +306,7 @@ export class ServiceMesh extends EventEmitter {
           path: req.path,
           statusCode: res.statusCode,
           duration,
-          traceId: req.headers['x-trace-id']
+          traceId: req.headers['x-trace-id'],
         })
       })
       next()
@@ -343,7 +343,7 @@ export class ServiceMesh extends EventEmitter {
           health: 'unknown',
           metadata: req.body.metadata || {},
           lastHealthCheck: new Date(),
-          weight: req.body.weight || 1
+          weight: req.body.weight || 1,
         }
 
         await this.discovery.registerService(serviceData)
@@ -366,7 +366,8 @@ export class ServiceMesh extends EventEmitter {
           return res.status(404).json({ error: `Service ${serviceName} not found` })
         }
 
-        const strategy = this.strategies.get(this.config.loadBalancing.name) || this.strategies.get('round_robin')!
+        const strategy =
+          this.strategies.get(this.config.loadBalancing.name) || this.strategies.get('round_robin')!
         const selectedInstance = strategy.select(instances)
 
         if (!selectedInstance) {
@@ -386,7 +387,7 @@ export class ServiceMesh extends EventEmitter {
           onError: (err, req, res) => {
             console.error('Proxy error:', err)
             res.status(502).json({ error: 'Service unavailable' })
-          }
+          },
         })
 
         proxy(req, res, next)
@@ -424,16 +425,16 @@ export const createServiceMesh = (config: Partial<ServiceMeshConfig> = {}): Serv
     healthCheck: {
       interval: 30000,
       timeout: 5000,
-      retries: 3
+      retries: 3,
     },
     tracing: {
       enabled: true,
-      endpoint: 'http://jaeger-collector:14268/api/traces'
+      endpoint: 'http://jaeger-collector:14268/api/traces',
     },
     metrics: {
       enabled: true,
-      endpoint: 'http://prometheus:9090'
-    }
+      endpoint: 'http://prometheus:9090',
+    },
   }
 
   return new ServiceMesh({ ...defaultConfig, ...config })

@@ -1,12 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -15,13 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 
 // Types (matching backend ServiceRegistry)
 interface Service {
@@ -49,10 +55,6 @@ interface Service {
   dependencies?: string[]
   configuration?: Record<string, any>
 }
-
-
-
-
 
 // Mock data
 const mockServices: Service[] = [
@@ -164,7 +166,6 @@ export function ServiceRegistry() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false)
 
-
   // Load services from API
   useEffect(() => {
     loadServices()
@@ -207,8 +208,6 @@ export function ServiceRegistry() {
     return icons[status as keyof typeof icons] || '❓'
   }
 
-
-
   const formatResponseTime = (responseTime?: number) => {
     return responseTime ? `${responseTime}ms` : 'N/A'
   }
@@ -217,11 +216,12 @@ export function ServiceRegistry() {
     return errorRate ? `${(errorRate * 100).toFixed(2)}%` : 'N/A'
   }
 
-  const filteredServices = services.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        service.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-    
+  const filteredServices = services.filter((service) => {
+    const matchesSearch =
+      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.tags?.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+
     const matchesStatus = statusFilter === 'all' || service.status === statusFilter
     const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
 
@@ -269,62 +269,59 @@ export function ServiceRegistry() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className='flex items-center justify-between'>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Service Registry</h2>
-          <p className="text-muted-foreground">
-            Discover, monitor, and manage microservices
-          </p>
+          <h2 className='text-2xl font-bold tracking-tight'>Service Registry</h2>
+          <p className='text-muted-foreground'>Discover, monitor, and manage microservices</p>
         </div>
-        <div className="flex gap-2">
+        <div className='flex gap-2'>
           <Button onClick={() => setIsRegisterDialogOpen(true)}>
-            <span className="mr-2">+</span>
+            <span className='mr-2'>+</span>
             Register Service
           </Button>
-          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
-            <span className="mr-2">{loading ? 'Refreshing...' : 'Refresh'}</span>
-            ↻
+          <Button variant='outline' onClick={handleRefresh} disabled={loading}>
+            <span className='mr-2'>{loading ? 'Refreshing...' : 'Refresh'}</span>↻
           </Button>
         </div>
       </div>
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="flex-1">
+        <CardContent className='p-6'>
+          <div className='flex flex-col gap-4 md:flex-row md:items-center'>
+            <div className='flex-1'>
               <Input
-                placeholder="Search services..."
+                placeholder='Search services...'
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
+                className='w-full'
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className='w-[150px]'>
+                <SelectValue placeholder='Status' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="healthy">Healthy</SelectItem>
-                <SelectItem value="degraded">Degraded</SelectItem>
-                <SelectItem value="unhealthy">Unhealthy</SelectItem>
-                <SelectItem value="unknown">Unknown</SelectItem>
+                <SelectItem value='all'>All Status</SelectItem>
+                <SelectItem value='healthy'>Healthy</SelectItem>
+                <SelectItem value='degraded'>Degraded</SelectItem>
+                <SelectItem value='unhealthy'>Unhealthy</SelectItem>
+                <SelectItem value='unknown'>Unknown</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Category" />
+              <SelectTrigger className='w-[150px]'>
+                <SelectValue placeholder='Category' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="Core">Core</SelectItem>
-                <SelectItem value="Analytics">Analytics</SelectItem>
-                <SelectItem value="Communication">Communication</SelectItem>
-                <SelectItem value="Storage">Storage</SelectItem>
-                <SelectItem value="Security">Security</SelectItem>
+                <SelectItem value='all'>All Categories</SelectItem>
+                <SelectItem value='Core'>Core</SelectItem>
+                <SelectItem value='Analytics'>Analytics</SelectItem>
+                <SelectItem value='Communication'>Communication</SelectItem>
+                <SelectItem value='Storage'>Storage</SelectItem>
+                <SelectItem value='Security'>Security</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -338,8 +335,8 @@ export function ServiceRegistry() {
         </CardHeader>
         <CardContent>
           {filteredServices.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No services found</p>
+            <div className='text-center py-8'>
+              <p className='text-muted-foreground'>No services found</p>
             </div>
           ) : (
             <Table>
@@ -356,18 +353,16 @@ export function ServiceRegistry() {
               <TableBody>
                 {filteredServices.map((service) => (
                   <TableRow key={service.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className='font-medium'>
                       <div>
-                        <div className="font-semibold">{service.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {service.description}
-                        </div>
-                        <div className="flex gap-1 mt-1">
-                          <Badge variant="outline" className="text-xs">
+                        <div className='font-semibold'>{service.name}</div>
+                        <div className='text-sm text-muted-foreground'>{service.description}</div>
+                        <div className='flex gap-1 mt-1'>
+                          <Badge variant='outline' className='text-xs'>
                             {service.category}
                           </Badge>
-                          {service.tags?.map(tag => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
+                          {service.tags?.map((tag) => (
+                            <Badge key={tag} variant='secondary' className='text-xs'>
                               {tag}
                             </Badge>
                           ))}
@@ -376,34 +371,34 @@ export function ServiceRegistry() {
                     </TableCell>
                     <TableCell>{getStatusBadge(service.status)}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className='flex items-center gap-2'>
                         <span>{getStatusIcon(service.status)}</span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className='text-sm text-muted-foreground'>
                           {service.lastHealthCheck}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>{formatResponseTime(service.responseTime)}</TableCell>
                     <TableCell>{formatErrorRate(service.errorRate)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
+                    <TableCell className='text-right'>
+                      <div className='flex gap-2 justify-end'>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant='outline'
+                          size='sm'
                           onClick={() => handleHealthCheck(service.id)}
                         >
                           Health Check
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant='outline'
+                          size='sm'
                           onClick={() => handleServiceAction(service.id, 'restart')}
                         >
                           Restart
                         </Button>
                         <Button
-                          variant="outline"
-                          size="sm"
+                          variant='outline'
+                          size='sm'
                           onClick={() => handleServiceAction(service.id, 'scale')}
                         >
                           Scale
@@ -427,35 +422,35 @@ export function ServiceRegistry() {
               Add a new microservice to the registry for discovery and management.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="col-span-3">
-                <Input placeholder="Service Name" />
+          <div className='grid gap-4 py-4'>
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <div className='col-span-3'>
+                <Input placeholder='Service Name' />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="col-span-3">
-                <Input placeholder="Version (e.g., 1.0.0)" />
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <div className='col-span-3'>
+                <Input placeholder='Version (e.g., 1.0.0)' />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="col-span-3">
-                <Input placeholder="Base URL (e.g., https://service.example.com)" />
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <div className='col-span-3'>
+                <Input placeholder='Base URL (e.g., https://service.example.com)' />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="col-span-3">
-                <Input placeholder="Health Endpoint (e.g., /health)" />
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <div className='col-span-3'>
+                <Input placeholder='Health Endpoint (e.g., /health)' />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="col-span-3">
-                <Input placeholder="Documentation URL (optional)" />
+            <div className='grid grid-cols-4 items-center gap-4'>
+              <div className='col-span-3'>
+                <Input placeholder='Documentation URL (optional)' />
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsRegisterDialogOpen(false)}>
+          <div className='flex justify-end gap-2'>
+            <Button variant='outline' onClick={() => setIsRegisterDialogOpen(false)}>
               Cancel
             </Button>
             <Button>Register Service</Button>
@@ -464,7 +459,7 @@ export function ServiceRegistry() {
       </Dialog>
 
       {/* Service Details Modal */}
-      <div className="text-center py-4 text-sm text-muted-foreground">
+      <div className='text-center py-4 text-sm text-muted-foreground'>
         <p>Service registry provides centralized service discovery and management</p>
         <p>✅ Complete API Gateway integration for traffic routing</p>
         <p>✅ Service health monitoring and configuration management</p>
