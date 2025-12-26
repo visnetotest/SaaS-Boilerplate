@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
+import createMiddleware from 'next-intl/middleware'
+
+import { AllLocales, AppConfig } from './src/utils/AppConfig'
+
+const i18nMiddleware = createMiddleware({
+  locales: AllLocales,
+  defaultLocale: AppConfig.defaultLocale,
+  localePrefix: AppConfig.localePrefix,
+})
 
 export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname
+
+  // Run i18n middleware first
+  const i18nResponse = i18nMiddleware(req)
 
   // Define protected routes (for future use)
   const isProtectedRoute =
@@ -19,8 +31,14 @@ export default async function middleware(req: NextRequest) {
   // TODO: Implement Edge Runtime compatible auth
   console.log(`Protected route check: ${isProtectedRoute} for ${pathname}`)
 
-  // Add security headers to response
-  const response = NextResponse.next()
+  // Get response from i18n middleware or create new one
+  let response: NextResponse
+
+  if (i18nResponse) {
+    response = i18nResponse
+  } else {
+    response = NextResponse.next()
+  }
 
   // Add security headers
   response.headers.set('X-Frame-Options', 'DENY')
