@@ -22,6 +22,11 @@ export default withSentryConfig(
       poweredByHeader: false,
       reactStrictMode: true,
       serverExternalPackages: ['@electric-sql/pglite', 'pg'],
+      // Fix WebSocket connection issue for HMR
+      webpack: (config) => {
+        config.infrastructureLogging = { level: 'error' }
+        return config
+      },
     })
   ),
   {

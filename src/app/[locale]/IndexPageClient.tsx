@@ -10,13 +10,7 @@ import { Navbar } from '@/templates/Navbar'
 import { Pricing } from '@/templates/Pricing'
 import { Sponsors } from '@/templates/Sponsors'
 
-interface IndexPageClientProps {
-  locale: string
-}
-
-export function IndexPageClient({ locale }: IndexPageClientProps) {
-  console.log('IndexPageClient rendering with locale:', locale)
-
+export function IndexPageClient() {
   return (
     <>
       <DemoBanner />

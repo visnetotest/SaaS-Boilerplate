@@ -15,7 +15,6 @@ export async function generateMetadata(_props: {
   }
 }
 
-export default async function IndexPage(_props: { params: Promise<{ locale: string }> }) {
-  const { locale } = await _props.params
-  return <IndexPageClient locale={locale} />
+export default function IndexPage() {
+  return <IndexPageClient />
 }

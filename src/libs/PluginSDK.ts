@@ -48,7 +48,7 @@ export class Plugin {
     this.version = context.config?.version || '1.0.0'
     this.logger = context.logger || console
     this.storage = context.storage || ({} as PluginStorage)
-    this.api = context.api || {} as PluginAPI
+    this.api = context.api || ({} as PluginAPI)
   }
 
   // =============================================================================
@@ -357,8 +357,8 @@ export class DataPlugin extends Plugin {
       }
       if (rules.type && typeof data[field] !== rules.type) {
         throw new Error(`Invalid type for field ${field}: expected ${rules.type}`)
-  }
-}
+      }
+    }
 
     return true
   }

@@ -49,8 +49,13 @@
     "./out/**/*",
     "./node_modules/**/*",
     "**/*.spec.ts",
+    "**/*.test.ts",
     "**/*.e2e.ts",
-    "./microservices/**/*"
+    "./tests/**/*",
+    "./microservices/**/*",
+    "./src/components/workflow/**/*",
+    "./src/libs/**/*",
+    "./src/services/collaboration/**/*"
   ],
   "include": [
     "next-env.d.ts",
